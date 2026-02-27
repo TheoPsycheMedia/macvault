@@ -22,7 +22,8 @@ function ensureLocalDataDirectory() {
 }
 
 function getDatabaseUrl() {
-  return process.env.TURSO_DATABASE_URL || LOCAL_DB_URL;
+  const fromEnv = process.env.TURSO_DATABASE_URL?.trim();
+  return fromEnv || LOCAL_DB_URL;
 }
 
 function isLocalFileUrl(url: string) {
@@ -58,7 +59,7 @@ export function getClient(): Client {
 
   const client = createClient({
     url,
-    authToken: process.env.TURSO_AUTH_TOKEN,
+    authToken: process.env.TURSO_AUTH_TOKEN?.trim() || undefined,
   });
 
   globalForDb.macvaultClient = client;
