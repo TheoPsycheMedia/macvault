@@ -88,11 +88,38 @@ function createTables(db: Database.Database) {
       createdAt TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS discovery_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      githubUrl TEXT NOT NULL UNIQUE,
+      repoFullName TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      starCount INTEGER DEFAULT 0,
+      forkCount INTEGER DEFAULT 0,
+      language TEXT,
+      lastCommitDate TEXT,
+      license TEXT,
+      topics TEXT DEFAULT '[]',
+      readmeExcerpt TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      aiSummary TEXT,
+      aiScores TEXT,
+      aiCategory TEXT,
+      aiSubcategory TEXT,
+      aiBrewCommand TEXT,
+      aiInstallInstructions TEXT,
+      evaluatedAt TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_tools_slug ON tools(slug);
     CREATE INDEX IF NOT EXISTS idx_tools_category ON tools(category);
     CREATE INDEX IF NOT EXISTS idx_scores_toolId ON scores(toolId);
     CREATE INDEX IF NOT EXISTS idx_votes_toolId ON votes(toolId);
     CREATE INDEX IF NOT EXISTS idx_votes_visitorId ON votes(visitorId);
+    CREATE INDEX IF NOT EXISTS idx_discovery_queue_status ON discovery_queue(status);
+    CREATE INDEX IF NOT EXISTS idx_discovery_queue_repo ON discovery_queue(repoFullName);
   `);
 }
 
