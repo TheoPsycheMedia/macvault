@@ -1,26 +1,110 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #06090f;
+  --bg-soft: #0b1221;
+  --surface: #0f1729;
+  --surface-elevated: #111b31;
+  --text: #f8fafc;
+  --text-muted: #9fb0ca;
+  --border: rgba(148, 163, 184, 0.16);
+}
+
+html.light {
+  --bg: #f2f6ff;
+  --bg-soft: #e7edf9;
+  --surface: #ffffff;
+  --surface-elevated: #f8fbff;
+  --text: #0f172a;
+  --text-muted: #4b5d79;
+  --border: rgba(15, 23, 42, 0.12);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(1000px 500px at 10% -10%, rgba(56, 189, 248, 0.15), transparent 55%),
+    radial-gradient(900px 400px at 90% -20%, rgba(59, 130, 246, 0.1), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), sans-serif;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.32);
+  color: white;
+}
+
+.page-enter {
+  animation: page-enter 0.5s ease-out;
+}
+
+.hero-gradient {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero-gradient::before,
+.hero-gradient::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(80px);
+}
+
+.hero-gradient::before {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.26) 0%, rgba(56, 189, 248, 0) 60%);
+  animation: drift-a 12s ease-in-out infinite alternate;
+}
+
+.hero-gradient::after {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0) 62%);
+  animation: drift-b 14s ease-in-out infinite alternate;
+}
+
+@keyframes drift-a {
+  from {
+    transform: translate(-6%, -4%) scale(1);
+  }
+  to {
+    transform: translate(8%, 6%) scale(1.15);
+  }
+}
+
+@keyframes drift-b {
+  from {
+    transform: translate(10%, -3%) scale(1.05);
+  }
+  to {
+    transform: translate(-8%, 8%) scale(0.95);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

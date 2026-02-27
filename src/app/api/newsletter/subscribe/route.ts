@@ -1,0 +1,27 @@
+import { NextResponse } from "next/server";
+
+import { subscribeToNewsletter } from "@/lib/repository";
+
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  const body = (await request.json().catch(() => null)) as { email?: string } | null;
+  const email = body?.email?.trim();
+
+  if (!email) {
+    return NextResponse.json({ message: "Email is required" }, { status: 400 });
+  }
+
+  const result = subscribeToNewsletter(email);
+
+  if (!result.created && result.reason === "Invalid email format") {
+    return NextResponse.json({ message: result.reason }, { status: 400 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: result.created
+      ? "You are subscribed to the MacVault digest."
+      : "You are already subscribed.",
+  });
+}
