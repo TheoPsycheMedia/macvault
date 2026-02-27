@@ -86,6 +86,24 @@ function createTables(db: Database.Database) {
       createdAt TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      passwordHash TEXT NOT NULL,
+      name TEXT,
+      createdAt TEXT NOT NULL,
+      lastLoginAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS admin_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT NOT NULL UNIQUE,
+      userId INTEGER NOT NULL,
+      expiresAt TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (userId) REFERENCES admin_users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS discovery_queue (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       githubUrl TEXT NOT NULL UNIQUE,
@@ -116,6 +134,9 @@ function createTables(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_scores_toolId ON scores(toolId);
     CREATE INDEX IF NOT EXISTS idx_votes_toolId ON votes(toolId);
     CREATE INDEX IF NOT EXISTS idx_votes_visitorId ON votes(visitorId);
+    CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+    CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
+    CREATE INDEX IF NOT EXISTS idx_admin_sessions_expiresAt ON admin_sessions(expiresAt);
     CREATE INDEX IF NOT EXISTS idx_discovery_queue_status ON discovery_queue(status);
     CREATE INDEX IF NOT EXISTS idx_discovery_queue_repo ON discovery_queue(repoFullName);
   `);
