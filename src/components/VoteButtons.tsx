@@ -68,10 +68,10 @@ export function VoteButtons({
 
   const buttonClass = (type: VoteType) => {
     const isActive = currentVote === type;
-    return `inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+    return `inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition duration-300 ${
       isActive
-        ? "border-cyan-300/60 bg-cyan-400/15 text-cyan-100"
-        : "border-white/10 bg-white/4 text-white/65 hover:border-white/20 hover:text-white"
+        ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-[color:var(--accent)]"
+        : "border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
     }`;
   };
 
@@ -98,9 +98,9 @@ export function VoteButtons({
           <ThumbsDown className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
           <span>{downvotes}</span>
         </button>
-        <span className="text-xs font-medium text-white/50">Net {voteCount}</span>
+        <span className="text-xs text-[color:var(--text-muted)]">Net {voteCount}</span>
       </div>
-      {errorMessage ? <p className="text-xs text-rose-300">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-xs text-[#9b4f2b]">{errorMessage}</p> : null}
     </div>
   );
 }

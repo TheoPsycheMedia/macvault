@@ -4,37 +4,37 @@ import { MoonStar, SunMedium } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
-  const [isLight, setIsLight] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
-    setIsLight(root.classList.contains("light"));
+    setIsDark(root.classList.contains("dark"));
   }, []);
 
   const toggleTheme = () => {
     const root = document.documentElement;
-    const nextIsLight = !root.classList.contains("light");
+    const nextIsDark = !root.classList.contains("dark");
 
-    if (nextIsLight) {
-      root.classList.add("light");
-      localStorage.setItem("macvault-theme", "light");
-    } else {
-      root.classList.remove("light");
+    if (nextIsDark) {
+      root.classList.add("dark");
       localStorage.setItem("macvault-theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("macvault-theme", "light");
     }
 
-    setIsLight(nextIsLight);
+    setIsDark(nextIsDark);
   };
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/12 bg-white/6 text-white/80 transition hover:border-white/25 hover:text-white"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--text-muted)] transition-colors duration-300 hover:text-[color:var(--text)]"
       aria-label="Toggle color theme"
       title="Toggle theme"
     >
-      {isLight ? <MoonStar className="h-4 w-4" /> : <SunMedium className="h-4 w-4" />}
+      {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
     </button>
   );
 }

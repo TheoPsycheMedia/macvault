@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { ToolCard } from "@/components/ToolCard";
 import { listCategories, listTools } from "@/lib/repository";
@@ -38,15 +40,26 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
-      <section className="mb-8 rounded-3xl border border-white/10 bg-[color:var(--surface-elevated)] p-6">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-white">Browse Tools</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/65">
-          Filter by category, score, and ranking signal to find Mac tools that match your setup.
+    <div className="editorial-shell pb-24 pt-10 md:pt-14">
+      <section
+        className="fade-in-section rounded-[28px] border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-6 py-10 md:px-10"
+        style={{ "--fade-delay": "0.02s" } as CSSProperties}
+      >
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+          Collection
+        </p>
+        <h1 className="mt-3 text-[48px] font-semibold leading-[1.03] tracking-[-0.02em] text-[color:var(--text)] md:text-[54px]">
+          Browse Tools
+        </h1>
+        <p className="mt-3 max-w-2xl text-[16px] text-[color:var(--text-muted)]">
+          Filter by category, score, and ranking signal to find the right tools for your setup.
         </p>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div
+        className="fade-in-section mt-12 grid gap-8 lg:grid-cols-[300px_1fr]"
+        style={{ "--fade-delay": "0.06s" } as CSSProperties}
+      >
         <FilterSidebar
           categories={categories}
           currentCategory={category}
@@ -56,19 +69,21 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
         />
 
         <div>
-          <p className="mb-4 text-sm text-white/55">
-            Showing <span className="font-semibold text-white">{tools.length}</span> results
+          <p className="mb-5 text-sm text-[color:var(--text-muted)]">
+            Showing <span className="font-medium text-[color:var(--text)]">{tools.length}</span> results
           </p>
 
           {tools.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)] p-8 text-center">
-              <h2 className="font-display text-2xl font-semibold text-white">No tools matched</h2>
-              <p className="mt-2 text-sm text-white/65">
+            <div className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-10 text-center">
+              <h2 className="text-[28px] font-medium tracking-[-0.01em] text-[color:var(--text)]">
+                No tools matched
+              </h2>
+              <p className="mt-2 text-[15px] text-[color:var(--text-muted)]">
                 Try lowering minimum score or clearing filters.
               </p>
             </div>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {tools.map((tool) => (
                 <ToolCard key={tool.id} tool={tool} />
               ))}

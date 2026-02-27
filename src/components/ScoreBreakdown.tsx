@@ -17,25 +17,29 @@ const scoreItems: Array<{ key: keyof Tool; label: string }> = [
 
 export function ScoreBreakdown({ tool }: ScoreBreakdownProps) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)] p-6">
-      <h3 className="font-display text-2xl font-semibold text-white">Score Breakdown</h3>
-      <p className="mt-2 text-sm text-white/65">
-        Eight weighted dimensions make up the overall MacVault score.
+    <section className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
+      <h3 className="text-[28px] font-medium tracking-[-0.01em] text-[color:var(--text)]">
+        Score Breakdown
+      </h3>
+      <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+        Eight transparent dimensions contribute to the final score.
       </p>
 
       <div className="mt-6 grid gap-4">
         {scoreItems.map((item) => {
           const value = Number(tool[item.key]);
+          const width = Math.max(0, Math.min(100, value * 10));
+
           return (
-            <div key={item.key} className="space-y-2">
+            <div key={item.key} className="space-y-2.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-white/80">{item.label}</span>
-                <span className="font-medium text-cyan-100">{value.toFixed(1)}</span>
+                <span className="text-[color:var(--text)]">{item.label}</span>
+                <span className="font-medium text-[color:var(--text-muted)]">{value.toFixed(1)}</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-2 overflow-hidden rounded-full bg-[color:var(--bg-soft)]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-blue-500"
-                  style={{ width: `${Math.max(0, Math.min(100, value * 10))}%` }}
+                  className="h-full rounded-full bg-[color:var(--accent)]"
+                  style={{ width: `${width}%` }}
                 />
               </div>
             </div>

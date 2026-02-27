@@ -1,10 +1,11 @@
-import { CalendarClock, GitFork, Scale, Star, Vote } from "lucide-react";
+import { CalendarClock, Scale, Star, Vote } from "lucide-react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { InstallCommand } from "@/components/InstallCommand";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ScoreBreakdown } from "@/components/ScoreBreakdown";
-import { ToolCard } from "@/components/ToolCard";
 import { ToolHero } from "@/components/ToolHero";
 import { VoteButtons } from "@/components/VoteButtons";
 import { getToolBySlug, listSimilarTools } from "@/lib/repository";
@@ -25,76 +26,40 @@ export default async function ToolDetailPage({ params }: ToolDetailPageProps) {
   const similarTools = listSimilarTools(tool, 3);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+    <div className="editorial-shell pb-24 pt-10 md:pt-14">
       <ToolHero tool={tool} />
 
-      <section className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)] p-5 md:grid-cols-5 md:items-center">
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-white/45">GitHub Stars</p>
-          <p className="mt-2 inline-flex items-center gap-2 text-lg font-semibold text-white">
-            <Star className="h-4 w-4 text-amber-300" />
-            {formatCompactNumber(tool.starCount)}
-          </p>
-        </div>
+      <section
+        className="fade-in-section mt-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr]"
+        style={{ "--fade-delay": "0.06s" } as CSSProperties}
+      >
+        <article className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-7">
+          <h2 className="text-[30px] font-medium tracking-[-0.02em] text-[color:var(--text)]">
+            MacVault Review
+          </h2>
+          <p className="mt-4 text-[16px] text-[color:var(--text-muted)]">{tool.summary}</p>
+          <p className="mt-4 text-[15px] text-[color:var(--text-muted)]">{tool.description}</p>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-white/45">MacVault Score</p>
-          <div className="mt-2">
-            <ScoreBadge score={tool.overallScore} size="sm" />
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-4 py-3 text-sm text-[color:var(--text-muted)]">
+              <span className="block text-[11px] uppercase tracking-[0.15em]">GitHub Stars</span>
+              <span className="mt-1 block text-[18px] font-medium text-[color:var(--text)]">
+                {formatCompactNumber(tool.starCount)}
+              </span>
+            </div>
+            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-4 py-3 text-sm text-[color:var(--text-muted)]">
+              <span className="block text-[11px] uppercase tracking-[0.15em]">Forks</span>
+              <span className="mt-1 block text-[18px] font-medium text-[color:var(--text)]">
+                {formatCompactNumber(tool.forkCount)}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-white/45">Votes</p>
-          <p className="mt-2 inline-flex items-center gap-2 text-lg font-semibold text-white">
-            <Vote className="h-4 w-4 text-cyan-200" />
-            {tool.voteCount}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-white/45">Last Updated</p>
-          <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
-            <CalendarClock className="h-4 w-4 text-cyan-200" />
-            {formatDate(tool.lastCommitDate)} ({formatRelativeDate(tool.lastCommitDate)})
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-white/45">License</p>
-          <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
-            <Scale className="h-4 w-4 text-cyan-200" />
-            {tool.license}
-          </p>
-        </div>
-      </section>
-
-      <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)] p-6">
-          <h2 className="font-display text-2xl font-semibold text-white">MacVault Review</h2>
-          <p className="mt-4 text-sm leading-7 text-white/75">{tool.summary}</p>
-          <p className="mt-4 text-sm leading-7 text-white/70">{tool.description}</p>
-          <div className="mt-5 flex items-center gap-4 text-sm text-white/55">
-            <span className="inline-flex items-center gap-2">
-              <Star className="h-4 w-4 text-amber-300" />
-              {formatCompactNumber(tool.starCount)} stars
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <GitFork className="h-4 w-4 text-blue-300" />
-              {formatCompactNumber(tool.forkCount)} forks
-            </span>
-          </div>
-        </article>
-
-        <div className="space-y-6">
-          <InstallCommand
-            brewCommand={tool.brewCommand}
-            websiteUrl={tool.websiteUrl}
-            installInstructions={tool.installInstructions}
-          />
-          <div className="rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)] p-5">
-            <h3 className="font-display text-xl font-semibold text-white">Vote</h3>
-            <p className="mt-2 text-sm text-white/65">Helpful tools rise faster with your feedback.</p>
+          <div className="mt-7 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] p-5">
+            <h3 className="text-[22px] font-medium tracking-[-0.01em] text-[color:var(--text)]">Vote</h3>
+            <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+              Helpful tools rise faster with community feedback.
+            </p>
             <div className="mt-4">
               <VoteButtons
                 slug={tool.slug}
@@ -104,28 +69,90 @@ export default async function ToolDetailPage({ params }: ToolDetailPageProps) {
               />
             </div>
           </div>
-        </div>
-      </section>
+        </article>
 
-      <section className="mt-8">
-        <ScoreBreakdown tool={tool} />
-      </section>
+        <aside className="space-y-6">
+          <InstallCommand
+            brewCommand={tool.brewCommand}
+            websiteUrl={tool.websiteUrl}
+            installInstructions={tool.installInstructions}
+          />
 
-      <section className="mt-10">
-        <h2 className="font-display text-3xl font-semibold tracking-tight text-white">Similar Tools</h2>
-        <p className="mt-2 text-sm text-white/65">More tools in {tool.categoryName} worth trying.</p>
+          <section className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h3 className="text-[24px] font-medium tracking-[-0.01em] text-[color:var(--text)]">
+                Quick Stats
+              </h3>
+              <ScoreBadge score={tool.overallScore} size="sm" />
+            </div>
 
-        {similarTools.length === 0 ? (
-          <div className="mt-5 rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)] p-6 text-sm text-white/70">
-            No similar tools available yet.
-          </div>
-        ) : (
-          <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {similarTools.map((item) => (
-              <ToolCard key={item.id} tool={item} />
-            ))}
-          </div>
-        )}
+            <div className="grid gap-3 text-sm">
+              <div className="flex items-center justify-between rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-3 py-2.5 text-[color:var(--text-muted)]">
+                <span className="inline-flex items-center gap-2">
+                  <Star className="h-4 w-4" />
+                  Stars
+                </span>
+                <span className="font-medium text-[color:var(--text)]">
+                  {formatCompactNumber(tool.starCount)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-3 py-2.5 text-[color:var(--text-muted)]">
+                <span className="inline-flex items-center gap-2">
+                  <Vote className="h-4 w-4" />
+                  Votes
+                </span>
+                <span className="font-medium text-[color:var(--text)]">{tool.voteCount}</span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-3 py-2.5 text-[color:var(--text-muted)]">
+                <span className="inline-flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" />
+                  Last Updated
+                </span>
+                <span className="font-medium text-[color:var(--text)]">
+                  {formatDate(tool.lastCommitDate)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-3 py-2.5 text-[color:var(--text-muted)]">
+                <span className="inline-flex items-center gap-2">
+                  <Scale className="h-4 w-4" />
+                  License
+                </span>
+                <span className="font-medium text-[color:var(--text)]">{tool.license}</span>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-[color:var(--text-muted)]">
+              Updated {formatRelativeDate(tool.lastCommitDate)}
+            </p>
+          </section>
+
+          <ScoreBreakdown tool={tool} />
+
+          <section className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
+            <h3 className="text-[24px] font-medium tracking-[-0.01em] text-[color:var(--text)]">
+              Similar Tools
+            </h3>
+            {similarTools.length === 0 ? (
+              <p className="mt-3 text-sm text-[color:var(--text-muted)]">No similar tools available yet.</p>
+            ) : (
+              <ul className="mt-4 space-y-2.5">
+                {similarTools.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={`/tools/${item.slug}`}
+                      className="block rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-4 py-3 transition duration-300 hover:bg-[color:var(--surface)]"
+                    >
+                      <p className="text-sm font-medium text-[color:var(--text)]">{item.name}</p>
+                      <p className="text-xs text-[color:var(--text-muted)]">{item.categoryName}</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </aside>
       </section>
     </div>
   );

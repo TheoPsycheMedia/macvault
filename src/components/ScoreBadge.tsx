@@ -1,33 +1,54 @@
-import { getScoreTone } from "@/lib/utils";
-
 interface ScoreBadgeProps {
   score: number;
   size?: "sm" | "md" | "lg";
 }
 
 const sizeMap = {
-  sm: "h-12 w-12 text-sm",
-  md: "h-16 w-16 text-base",
-  lg: "h-20 w-20 text-lg",
+  sm: { box: 48, radius: 18, stroke: 3, textClass: "text-xs" },
+  md: { box: 58, radius: 22, stroke: 3, textClass: "text-sm" },
+  lg: { box: 72, radius: 27, stroke: 3.4, textClass: "text-base" },
 } as const;
 
-const toneMap = {
-  emerald:
-    "border-emerald-400/45 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.2)]",
-  amber:
-    "border-amber-400/45 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]",
-  rose: "border-rose-400/45 bg-rose-500/10 text-rose-200 shadow-[0_0_0_1px_rgba(244,63,94,0.2)]",
-};
-
 export function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
-  const tone = getScoreTone(score);
+  const clampedScore = Math.max(0, Math.min(10, score));
+  const progress = clampedScore / 10;
+  const { box, radius, stroke, textClass } = sizeMap[size];
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - progress);
 
   return (
     <div
-      className={`inline-flex items-center justify-center rounded-full border font-semibold tracking-tight ${sizeMap[size]} ${toneMap[tone]}`}
-      aria-label={`Score ${score.toFixed(1)} out of 10`}
+      className="relative inline-flex items-center justify-center"
+      style={{ width: box, height: box }}
+      aria-label={`Score ${clampedScore.toFixed(1)} out of 10`}
+      title={`Score ${clampedScore.toFixed(1)} / 10`}
     >
-      {score.toFixed(1)}
+      <svg className="h-full w-full -rotate-90" viewBox={`0 0 ${box} ${box}`} aria-hidden>
+        <circle
+          cx={box / 2}
+          cy={box / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={box / 2}
+          cy={box / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+        />
+      </svg>
+      <span
+        className={`pointer-events-none absolute font-medium tracking-[-0.01em] text-[color:var(--text)] ${textClass}`}
+      >
+        {clampedScore.toFixed(1)}
+      </span>
     </div>
   );
 }

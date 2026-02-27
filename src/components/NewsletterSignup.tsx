@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, MailCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 interface NewsletterSignupProps {
@@ -10,7 +10,7 @@ interface NewsletterSignupProps {
 
 export function NewsletterSignup({
   title = "Get the weekly MacVault digest",
-  description = "New tools, trending repos, and practical setup workflows for your Mac.",
+  description = "A concise editorial roundup of standout releases, useful updates, and practical setup notes.",
 }: NewsletterSignupProps) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -52,39 +52,38 @@ export function NewsletterSignup({
   };
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[linear-gradient(140deg,rgba(34,211,238,0.18),rgba(37,99,235,0.12)_45%,rgba(2,6,23,0.7)_90%)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] sm:p-8">
-      <div className="max-w-2xl">
-        <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-cyan-100">
-          <MailCheck className="h-3.5 w-3.5" />
+    <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-6 py-12 text-center sm:px-10">
+      <div className="mx-auto max-w-2xl">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
           Newsletter
         </p>
-        <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+        <h2 className="mt-3 text-[32px] font-medium leading-tight tracking-[-0.02em] text-[color:var(--text)]">
           {title}
         </h2>
-        <p className="mt-3 text-sm text-white/75 sm:text-base">{description}</p>
+        <p className="mt-3 text-[15px] text-[color:var(--text-muted)]">{description}</p>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <form onSubmit={onSubmit} className="mx-auto mt-7 flex w-full max-w-xl flex-col gap-3 sm:flex-row">
         <input
           type="email"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@company.com"
-          className="h-12 flex-1 rounded-xl border border-white/20 bg-black/30 px-4 text-sm text-white placeholder:text-white/45 outline-none transition focus:border-cyan-300/70 focus:ring-2 focus:ring-cyan-400/25"
+          className="h-12 flex-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-5 text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-muted)] outline-none transition duration-300 focus:border-[color:var(--accent)] focus:ring-2 focus:ring-[color:var(--accent-soft)]"
         />
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-blue-500 px-5 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:opacity-80"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[color:var(--accent)] px-6 text-sm font-medium text-[color:var(--accent-contrast)] transition duration-300 hover:opacity-90 disabled:opacity-75"
         >
-          {isSubmitting ? "Joining..." : "Join digest"}
+          {isSubmitting ? "Joining..." : "Join Digest"}
           <ArrowRight className="h-4 w-4" />
         </button>
       </form>
 
       {message ? (
-        <p className={`mt-3 text-sm ${success ? "text-emerald-200" : "text-rose-200"}`}>
+        <p className={`mt-4 text-sm ${success ? "text-[color:var(--accent)]" : "text-[#9b4f2b]"}`}>
           {message}
         </p>
       ) : null}
