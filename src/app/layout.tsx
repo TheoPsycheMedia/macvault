@@ -26,10 +26,10 @@ const themeInitScript = `
 
 export const metadata: Metadata = {
   title: {
-    default: "MacVault",
-    template: "%s · MacVault",
+    default: "MacVault — Curated Mac Tools",
+    template: "%s | MacVault",
   },
-  description: "Discover the best open-source Mac tools, scored and curated.",
+  description: "Discover the best Mac tools, scored and curated for practical macOS workflows.",
 };
 
 export default function RootLayout({
