@@ -1,12 +1,64 @@
 import { NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
+import { ensureInitialized, execute } from "@/lib/db";
 import type { DiscoveryAiScores, DiscoveryQueueItem } from "@/lib/discovery/types";
 
 export const runtime = "nodejs";
 
 interface PublishRouteContext {
   params: Promise<{ id: string }>;
+}
+
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function toNullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function mapQueueItem(row: Record<string, unknown>): DiscoveryQueueItem {
+  return {
+    id: toNumber(row.id),
+    githubUrl: toStringValue(row.githubUrl),
+    repoFullName: toStringValue(row.repoFullName),
+    name: toStringValue(row.name),
+    description: toNullableString(row.description),
+    starCount: toNumber(row.starCount),
+    forkCount: toNumber(row.forkCount),
+    language: toNullableString(row.language),
+    lastCommitDate: toNullableString(row.lastCommitDate),
+    license: toNullableString(row.license),
+    topics: toStringValue(row.topics) || "[]",
+    readmeExcerpt: toNullableString(row.readmeExcerpt),
+    status: toStringValue(row.status) as DiscoveryQueueItem["status"],
+    aiSummary: toNullableString(row.aiSummary),
+    aiScores: toNullableString(row.aiScores),
+    aiCategory: toNullableString(row.aiCategory),
+    aiSubcategory: toNullableString(row.aiSubcategory),
+    aiBrewCommand: toNullableString(row.aiBrewCommand),
+    aiInstallInstructions: toNullableString(row.aiInstallInstructions),
+    evaluatedAt: toNullableString(row.evaluatedAt),
+    createdAt: toStringValue(row.createdAt),
+    updatedAt: toStringValue(row.updatedAt),
+  };
 }
 
 function parseScores(value: string | null): DiscoveryAiScores | null {
@@ -71,44 +123,44 @@ function slugify(input: string) {
   return slug || "mac-tool";
 }
 
-function findUniqueSlug(baseName: string) {
+async function findUniqueSlug(baseName: string) {
   const baseSlug = slugify(baseName);
-  const existsStmt = db.prepare("SELECT id FROM tools WHERE slug = ? LIMIT 1");
 
   let slug = baseSlug;
   let suffix = 2;
 
-  while (existsStmt.get(slug)) {
+  while (true) {
+    const exists = await execute("SELECT id FROM tools WHERE slug = ? LIMIT 1", [slug]);
+    if (exists.rows.length === 0) {
+      return slug;
+    }
+
     slug = `${baseSlug}-${suffix}`;
     suffix += 1;
   }
-
-  return slug;
 }
 
-function pickCategory(requested: string | null) {
+async function pickCategory(requested: string | null) {
   if (requested) {
-    const existing = db
-      .prepare("SELECT slug FROM categories WHERE slug = ? LIMIT 1")
-      .get(requested) as { slug: string } | undefined;
+    const existing = await execute("SELECT slug FROM categories WHERE slug = ? LIMIT 1", [requested]);
+    const existingSlug = toStringValue((existing.rows[0] as Record<string, unknown> | undefined)?.slug);
 
-    if (existing) {
-      return existing.slug;
+    if (existingSlug) {
+      return existingSlug;
     }
   }
 
-  const fallback = db
-    .prepare("SELECT slug FROM categories ORDER BY CASE WHEN slug = 'developer-tools' THEN 0 ELSE 1 END, name ASC LIMIT 1")
-    .get() as { slug: string } | undefined;
+  const fallback = await execute(
+    "SELECT slug FROM categories ORDER BY CASE WHEN slug = 'developer-tools' THEN 0 ELSE 1 END, name ASC LIMIT 1",
+  );
 
-  return fallback?.slug ?? "developer-tools";
-}
-
-function toNumber(value: number | bigint) {
-  return typeof value === "bigint" ? Number(value) : value;
+  const fallbackSlug = toStringValue((fallback.rows[0] as Record<string, unknown> | undefined)?.slug);
+  return fallbackSlug || "developer-tools";
 }
 
 export async function POST(_: Request, { params }: PublishRouteContext) {
+  await ensureInitialized();
+
   const { id } = await params;
   const queueId = Number(id);
 
@@ -116,9 +168,9 @@ export async function POST(_: Request, { params }: PublishRouteContext) {
     return NextResponse.json({ message: "Invalid queue id" }, { status: 400 });
   }
 
-  const candidate = db
-    .prepare("SELECT * FROM discovery_queue WHERE id = ? LIMIT 1")
-    .get(queueId) as DiscoveryQueueItem | undefined;
+  const candidateResult = await execute("SELECT * FROM discovery_queue WHERE id = ? LIMIT 1", [queueId]);
+  const candidateRow = candidateResult.rows[0] as Record<string, unknown> | undefined;
+  const candidate = candidateRow ? mapQueueItem(candidateRow) : undefined;
 
   if (!candidate) {
     return NextResponse.json({ message: "Discovery item not found" }, { status: 404 });
@@ -133,10 +185,10 @@ export async function POST(_: Request, { params }: PublishRouteContext) {
     return NextResponse.json({ message: "Missing AI scores for this candidate" }, { status: 400 });
   }
 
-  const category = pickCategory(candidate.aiCategory);
+  const category = await pickCategory(candidate.aiCategory);
   const mappedScores = mapDiscoveryScoresToToolScores(aiScores);
   const now = new Date().toISOString();
-  const slug = findUniqueSlug(candidate.name || candidate.repoFullName.split("/")[1] || "mac-tool");
+  const slug = await findUniqueSlug(candidate.name || candidate.repoFullName.split("/")[1] || "mac-tool");
   const summary = (candidate.aiSummary ?? candidate.description ?? "").trim();
   const description = (candidate.description ?? candidate.aiSummary ?? "").trim();
   const brewCommand = (candidate.aiBrewCommand ?? "").trim();
@@ -146,116 +198,104 @@ export async function POST(_: Request, { params }: PublishRouteContext) {
   const subcategory = (candidate.aiSubcategory ?? "").trim() || "General";
   const license = candidate.license ?? "Unknown";
 
-  const insertTool = db.prepare(`
-    INSERT INTO tools (
-      name,
+  const toolInsertResult = await execute(
+    `
+      INSERT INTO tools (
+        name,
+        slug,
+        description,
+        summary,
+        githubUrl,
+        websiteUrl,
+        category,
+        subcategory,
+        iconUrl,
+        screenshotUrls,
+        brewCommand,
+        installInstructions,
+        score,
+        starCount,
+        forkCount,
+        lastCommitDate,
+        license,
+        createdAt,
+        updatedAt,
+        isPublished,
+        isFeatured
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0
+      )
+    `,
+    [
+      candidate.name,
       slug,
-      description,
-      summary,
-      githubUrl,
-      websiteUrl,
-      category,
-      subcategory,
-      iconUrl,
-      screenshotUrls,
-      brewCommand,
-      installInstructions,
-      score,
-      starCount,
-      forkCount,
-      lastCommitDate,
-      license,
-      createdAt,
-      updatedAt,
-      isPublished,
-      isFeatured
-    ) VALUES (
-      @name,
-      @slug,
-      @description,
-      @summary,
-      @githubUrl,
-      @websiteUrl,
-      @category,
-      @subcategory,
-      @iconUrl,
-      @screenshotUrls,
-      @brewCommand,
-      @installInstructions,
-      @score,
-      @starCount,
-      @forkCount,
-      @lastCommitDate,
-      @license,
-      @createdAt,
-      @updatedAt,
-      1,
-      0
-    )
-  `);
-
-  const insertScores = db.prepare(`
-    INSERT INTO scores (
-      toolId,
-      functionality,
-      usefulness,
-      visualQuality,
-      installEase,
-      maintenanceHealth,
-      documentationQuality,
-      appleSiliconSupport,
-      privacySecurity,
-      overallScore
-    ) VALUES (
-      @toolId,
-      @functionality,
-      @usefulness,
-      @visualQuality,
-      @installEase,
-      @maintenanceHealth,
-      @documentationQuality,
-      @appleSiliconSupport,
-      @privacySecurity,
-      @overallScore
-    )
-  `);
-
-  const publishTx = db.transaction(() => {
-    const toolInsertResult = insertTool.run({
-      name: candidate.name,
-      slug,
-      description:
-        description ||
+      description ||
         `${candidate.name} is an open-source Mac project discovered by the MacVault pipeline.`,
-      summary: summary || description || `${candidate.name} discovered by MacVault.`,
-      githubUrl: candidate.githubUrl,
-      websiteUrl: candidate.githubUrl,
+      summary || description || `${candidate.name} discovered by MacVault.`,
+      candidate.githubUrl,
+      candidate.githubUrl,
       category,
       subcategory,
-      iconUrl: "",
-      screenshotUrls: "[]",
+      "",
+      "[]",
       brewCommand,
       installInstructions,
-      score: mappedScores.overallScore,
-      starCount: candidate.starCount,
-      forkCount: candidate.forkCount,
-      lastCommitDate: candidate.lastCommitDate ?? now,
+      mappedScores.overallScore,
+      candidate.starCount,
+      candidate.forkCount,
+      candidate.lastCommitDate ?? now,
       license,
-      createdAt: now,
-      updatedAt: now,
-    });
+      now,
+      now,
+    ],
+  );
 
-    const toolId = toNumber(toolInsertResult.lastInsertRowid);
+  let toolId = toNumber(toolInsertResult.lastInsertRowid);
 
-    insertScores.run({
+  if (!toolId) {
+    const toolIdResult = await execute("SELECT id FROM tools WHERE slug = ? LIMIT 1", [slug]);
+    toolId = toNumber((toolIdResult.rows[0] as Record<string, unknown> | undefined)?.id);
+  }
+
+  if (!toolId) {
+    return NextResponse.json({ message: "Failed to publish tool" }, { status: 500 });
+  }
+
+  await execute(
+    `
+      INSERT INTO scores (
+        toolId,
+        functionality,
+        usefulness,
+        visualQuality,
+        installEase,
+        maintenanceHealth,
+        documentationQuality,
+        appleSiliconSupport,
+        privacySecurity,
+        overallScore
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      )
+    `,
+    [
       toolId,
-      ...mappedScores,
-    });
+      mappedScores.functionality,
+      mappedScores.usefulness,
+      mappedScores.visualQuality,
+      mappedScores.installEase,
+      mappedScores.maintenanceHealth,
+      mappedScores.documentationQuality,
+      mappedScores.appleSiliconSupport,
+      mappedScores.privacySecurity,
+      mappedScores.overallScore,
+    ],
+  );
 
-    db.prepare("UPDATE discovery_queue SET status = 'published', updatedAt = ? WHERE id = ?").run(now, queueId);
+  await execute("UPDATE discovery_queue SET status = 'published', updatedAt = ? WHERE id = ?", [now, queueId]);
 
-    db.prepare(
-      `
+  await execute(
+    `
       UPDATE categories
       SET toolCount = (
         SELECT COUNT(*)
@@ -265,16 +305,12 @@ export async function POST(_: Request, { params }: PublishRouteContext) {
       )
       WHERE slug = ?
     `,
-    ).run(category);
-
-    return { toolId };
-  });
-
-  const result = publishTx();
+    [category],
+  );
 
   return NextResponse.json({
     published: true,
-    toolId: result.toolId,
+    toolId,
     slug,
     category,
   });

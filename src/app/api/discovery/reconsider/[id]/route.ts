@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
+import { ensureInitialized, execute } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -8,7 +8,26 @@ interface ReconsiderRouteContext {
   params: Promise<{ id: string }>;
 }
 
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
 export async function POST(_: Request, { params }: ReconsiderRouteContext) {
+  await ensureInitialized();
+
   const { id } = await params;
   const queueId = Number(id);
 
@@ -16,23 +35,23 @@ export async function POST(_: Request, { params }: ReconsiderRouteContext) {
     return NextResponse.json({ message: "Invalid queue id" }, { status: 400 });
   }
 
-  const candidate = db
-    .prepare("SELECT id, status FROM discovery_queue WHERE id = ? LIMIT 1")
-    .get(queueId) as { id: number; status: string } | undefined;
+  const candidateResult = await execute("SELECT id, status FROM discovery_queue WHERE id = ? LIMIT 1", [queueId]);
+  const candidateId = toNumber((candidateResult.rows[0] as Record<string, unknown> | undefined)?.id);
 
-  if (!candidate) {
+  if (!candidateId) {
     return NextResponse.json({ message: "Discovery item not found" }, { status: 404 });
   }
 
   const now = new Date().toISOString();
 
-  db.prepare(
+  await execute(
     `
-    UPDATE discovery_queue
-    SET status = 'pending', updatedAt = ?
-    WHERE id = ?
-  `,
-  ).run(now, queueId);
+      UPDATE discovery_queue
+      SET status = 'pending', updatedAt = ?
+      WHERE id = ?
+    `,
+    [now, queueId],
+  );
 
   return NextResponse.json({ reconsidered: true, id: queueId });
 }

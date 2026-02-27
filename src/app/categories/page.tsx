@@ -3,8 +3,8 @@ import type { CSSProperties } from "react";
 import { CategoryCard } from "@/components/CategoryCard";
 import { listCategories } from "@/lib/repository";
 
-export default function CategoriesPage() {
-  const categories = listCategories();
+export default async function CategoriesPage() {
+  const categories = await listCategories();
 
   return (
     <div className="editorial-shell pb-24 pt-10 md:pt-14">

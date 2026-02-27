@@ -44,7 +44,7 @@ function toAbsoluteUrl(value: string | null | undefined) {
 
 export async function generateMetadata({ params }: ToolDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const tool = getToolBySlug(slug);
+  const tool = await getToolBySlug(slug);
 
   if (!tool) {
     return {
@@ -85,13 +85,13 @@ export async function generateMetadata({ params }: ToolDetailPageProps): Promise
 
 export default async function ToolDetailPage({ params }: ToolDetailPageProps) {
   const { slug } = await params;
-  const tool = getToolBySlug(slug);
+  const tool = await getToolBySlug(slug);
 
   if (!tool) {
     notFound();
   }
 
-  const similarTools = listSimilarTools(tool, 4);
+  const similarTools = await listSimilarTools(tool, 4);
   const ratingCount = tool.upvotes + tool.downvotes;
   const primaryImage = toAbsoluteUrl(tool.screenshotUrls[0]);
 

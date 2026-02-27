@@ -1,4 +1,4 @@
-import { db } from "../db-core";
+import { execute } from "../db-core";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const SEARCH_PAGE_SIZE = 100;
@@ -53,6 +53,10 @@ function isoDateDaysAgo(days: number) {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - days);
   return date.toISOString().slice(0, 10);
+}
+
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
 }
 
 async function respectRateLimit(headers: Headers) {
@@ -137,52 +141,20 @@ export async function scanGitHub() {
   const token = requireGitHubToken();
   const pushedAfter = isoDateDaysAgo(90);
 
-  const rows = db
-    .prepare(
-      `
-      SELECT githubUrl FROM tools
-      UNION
-      SELECT githubUrl FROM discovery_queue
-    `,
-    )
-    .all() as Array<{ githubUrl: string }>;
+  const existing = await execute(`
+    SELECT githubUrl FROM tools
+    UNION
+    SELECT githubUrl FROM discovery_queue
+  `);
 
-  const knownUrls = new Set(rows.map((row) => normalizeGitHubUrl(row.githubUrl)));
+  const knownUrls = new Set(
+    existing.rows
+      .map((row) => normalizeGitHubUrl(toStringValue((row as Record<string, unknown>).githubUrl)))
+      .filter(Boolean),
+  );
 
   const topicQuery = `${MAC_TOPIC_QUERY} stars:>50 pushed:>=${pushedAfter} archived:false`;
   const topicRepos = await searchRepositories(topicQuery, token);
-
-  const insertCandidate = db.prepare(`
-    INSERT OR IGNORE INTO discovery_queue (
-      githubUrl,
-      repoFullName,
-      name,
-      description,
-      starCount,
-      forkCount,
-      language,
-      lastCommitDate,
-      license,
-      topics,
-      status,
-      createdAt,
-      updatedAt
-    ) VALUES (
-      @githubUrl,
-      @repoFullName,
-      @name,
-      @description,
-      @starCount,
-      @forkCount,
-      @language,
-      @lastCommitDate,
-      @license,
-      @topics,
-      'pending',
-      @createdAt,
-      @updatedAt
-    )
-  `);
 
   const cutoff = new Date();
   cutoff.setUTCDate(cutoff.getUTCDate() - 90);
@@ -206,22 +178,43 @@ export async function scanGitHub() {
       continue;
     }
 
-    const result = insertCandidate.run({
-      githubUrl: repo.html_url,
-      repoFullName: repo.full_name,
-      name: repo.name,
-      description: repo.description,
-      starCount: repo.stargazers_count,
-      forkCount: repo.forks_count,
-      language: repo.language,
-      lastCommitDate: pushedAt.toISOString(),
-      license: pickLicense(repo.license),
-      topics: JSON.stringify(Array.isArray(repo.topics) ? repo.topics : []),
-      createdAt: now,
-      updatedAt: now,
-    });
+    const result = await execute(
+      `
+        INSERT OR IGNORE INTO discovery_queue (
+          githubUrl,
+          repoFullName,
+          name,
+          description,
+          starCount,
+          forkCount,
+          language,
+          lastCommitDate,
+          license,
+          topics,
+          status,
+          createdAt,
+          updatedAt
+        ) VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
+        )
+      `,
+      [
+        repo.html_url,
+        repo.full_name,
+        repo.name,
+        repo.description,
+        repo.stargazers_count,
+        repo.forks_count,
+        repo.language,
+        pushedAt.toISOString(),
+        pickLicense(repo.license),
+        JSON.stringify(Array.isArray(repo.topics) ? repo.topics : []),
+        now,
+        now,
+      ],
+    );
 
-    if (result.changes > 0) {
+    if (Number(result.rowsAffected ?? 0) > 0) {
       insertedCount += 1;
       knownUrls.add(normalizedUrl);
     }

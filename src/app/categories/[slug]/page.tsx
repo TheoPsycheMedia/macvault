@@ -21,7 +21,7 @@ export default async function CategoryDetailPage({
   const { slug } = await params;
   const query = await searchParams;
 
-  const category = getCategoryBySlug(slug);
+  const category = await getCategoryBySlug(slug);
   if (!category) {
     notFound();
   }
@@ -34,7 +34,7 @@ export default async function CategoryDetailPage({
   const minScore = Number.isFinite(minScoreValue) ? minScoreValue : 0;
   const search = query.search?.trim() || undefined;
 
-  const tools = listTools({
+  const tools = await listTools({
     category: slug,
     sort,
     minScore,

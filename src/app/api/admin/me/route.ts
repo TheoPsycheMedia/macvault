@@ -1,12 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
+import { ensureInitialized, execute } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-function getAdminCount() {
-  const row = db.prepare("SELECT COUNT(*) AS count FROM admin_users").get() as { count: number };
-  return Number(row.count);
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function toNullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+async function getAdminCount() {
+  const result = await execute("SELECT COUNT(*) AS count FROM admin_users");
+  return toNumber((result.rows[0] as Record<string, unknown> | undefined)?.count);
 }
 
 function readBearerToken(request: NextRequest) {
@@ -19,7 +44,9 @@ function readBearerToken(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const adminCount = getAdminCount();
+  await ensureInitialized();
+
+  const adminCount = await getAdminCount();
   if (adminCount === 0) {
     return NextResponse.json(
       { error: "No admin users found", code: "NO_ADMINS" },
@@ -35,9 +62,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const row = db
-    .prepare(
-      `
+  const result = await execute(
+    `
       SELECT
         s.id AS sessionId,
         s.expiresAt,
@@ -49,33 +75,33 @@ export async function GET(request: NextRequest) {
       WHERE s.token = ?
       LIMIT 1
     `,
-    )
-    .get(token) as
-    | {
-        sessionId: number;
-        expiresAt: string;
-        userId: number;
-        email: string;
-        name: string | null;
-      }
-    | undefined;
+    [token],
+  );
+
+  const row = result.rows[0] as Record<string, unknown> | undefined;
 
   if (!row) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const expiresAtMs = Date.parse(row.expiresAt);
+  const sessionId = toNumber(row.sessionId);
+  const expiresAt = toStringValue(row.expiresAt);
+  const userId = toNumber(row.userId);
+  const email = toStringValue(row.email);
+  const name = toNullableString(row.name);
+
+  const expiresAtMs = Date.parse(expiresAt);
   if (Number.isNaN(expiresAtMs) || expiresAtMs <= Date.now()) {
-    db.prepare("DELETE FROM admin_sessions WHERE id = ?").run(row.sessionId);
+    await execute("DELETE FROM admin_sessions WHERE id = ?", [sessionId]);
     return NextResponse.json({ error: "Session expired" }, { status: 401 });
   }
 
   return NextResponse.json({
     ok: true,
     user: {
-      id: row.userId,
-      email: row.email,
-      name: row.name,
+      id: userId,
+      email,
+      name,
     },
   });
 }

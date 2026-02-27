@@ -1,4 +1,4 @@
-import { db } from "../src/lib/db-core";
+import { ensureInitialized, execute } from "../src/lib/db-core";
 import { extractScreenshots } from "../src/lib/discovery/screenshots";
 
 interface ToolRow {
@@ -15,6 +15,49 @@ interface ApprovedQueueRow {
   githubUrl: string;
 }
 
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function toNullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function mapToolRow(row: Record<string, unknown>): ToolRow {
+  return {
+    id: toNumber(row.id),
+    slug: toStringValue(row.slug),
+    name: toStringValue(row.name),
+    githubUrl: toStringValue(row.githubUrl),
+    websiteUrl: toNullableString(row.websiteUrl),
+  };
+}
+
+function mapApprovedRow(row: Record<string, unknown>): ApprovedQueueRow {
+  return {
+    id: toNumber(row.id),
+    name: toStringValue(row.name),
+    githubUrl: toStringValue(row.githubUrl),
+  };
+}
+
 function slugify(value: string) {
   const slug = value
     .trim()
@@ -25,12 +68,12 @@ function slugify(value: string) {
   return slug || "tool";
 }
 
-function updateToolScreenshots(toolId: number, screenshotPaths: string[]) {
-  db.prepare("UPDATE tools SET screenshotUrls = ?, updatedAt = ? WHERE id = ?").run(
+async function updateToolScreenshots(toolId: number, screenshotPaths: string[]) {
+  await execute("UPDATE tools SET screenshotUrls = ?, updatedAt = ? WHERE id = ?", [
     JSON.stringify(screenshotPaths),
     new Date().toISOString(),
     toolId,
-  );
+  ]);
 }
 
 async function extractForTool(tool: ToolRow) {
@@ -42,7 +85,7 @@ async function extractForTool(tool: ToolRow) {
   );
 
   if (screenshots.length > 0) {
-    updateToolScreenshots(tool.id, screenshots);
+    await updateToolScreenshots(tool.id, screenshots);
   }
 
   console.log(`Extracted ${screenshots.length} screenshots for ${tool.name}`);
@@ -52,44 +95,46 @@ async function extractForApprovedCandidate(candidate: ApprovedQueueRow) {
   const derivedSlug = slugify(candidate.name);
   const screenshots = await extractScreenshots(derivedSlug, candidate.githubUrl, undefined, candidate.name);
 
-  const existingTool = db
-    .prepare("SELECT id FROM tools WHERE lower(githubUrl) = lower(?) LIMIT 1")
-    .get(candidate.githubUrl) as { id: number } | undefined;
+  const existingToolResult = await execute(
+    "SELECT id FROM tools WHERE lower(githubUrl) = lower(?) LIMIT 1",
+    [candidate.githubUrl],
+  );
 
-  if (existingTool && screenshots.length > 0) {
-    updateToolScreenshots(existingTool.id, screenshots);
+  const existingToolId = toNumber((existingToolResult.rows[0] as Record<string, unknown> | undefined)?.id);
+
+  if (existingToolId && screenshots.length > 0) {
+    await updateToolScreenshots(existingToolId, screenshots);
   }
 
   console.log(`Extracted ${screenshots.length} screenshots for ${candidate.name}`);
 }
 
 async function runSingle(targetSlug: string) {
-  const tool = db
-    .prepare(
-      `
+  const toolResult = await execute(
+    `
       SELECT id, slug, name, githubUrl, websiteUrl
       FROM tools
       WHERE slug = ?
       LIMIT 1
     `,
-    )
-    .get(targetSlug) as ToolRow | undefined;
+    [targetSlug],
+  );
 
-  if (tool) {
-    await extractForTool(tool);
+  const toolRow = toolResult.rows[0] as Record<string, unknown> | undefined;
+
+  if (toolRow) {
+    await extractForTool(mapToolRow(toolRow));
     return;
   }
 
-  const approved = db
-    .prepare(
-      `
-      SELECT id, name, githubUrl
-      FROM discovery_queue
-      WHERE status = 'approved'
-      ORDER BY starCount DESC, id ASC
-    `,
-    )
-    .all() as ApprovedQueueRow[];
+  const approvedResult = await execute(`
+    SELECT id, name, githubUrl
+    FROM discovery_queue
+    WHERE status = 'approved'
+    ORDER BY starCount DESC, id ASC
+  `);
+
+  const approved = approvedResult.rows.map((row) => mapApprovedRow(row as Record<string, unknown>));
 
   const candidate = approved.find((row) => slugify(row.name) === targetSlug);
   if (!candidate) {
@@ -100,27 +145,25 @@ async function runSingle(targetSlug: string) {
 }
 
 async function runAll() {
-  const publishedTools = db
-    .prepare(
-      `
+  const [publishedResult, approvedResult] = await Promise.all([
+    execute(`
       SELECT id, slug, name, githubUrl, websiteUrl
       FROM tools
       WHERE isPublished = 1
       ORDER BY name ASC
-    `,
-    )
-    .all() as ToolRow[];
-
-  const approvedCandidates = db
-    .prepare(
-      `
+    `),
+    execute(`
       SELECT id, name, githubUrl
       FROM discovery_queue
       WHERE status = 'approved'
       ORDER BY starCount DESC, id ASC
-    `,
-    )
-    .all() as ApprovedQueueRow[];
+    `),
+  ]);
+
+  const publishedTools = publishedResult.rows.map((row) => mapToolRow(row as Record<string, unknown>));
+  const approvedCandidates = approvedResult.rows.map((row) =>
+    mapApprovedRow(row as Record<string, unknown>),
+  );
 
   for (const tool of publishedTools) {
     await extractForTool(tool);
@@ -132,6 +175,8 @@ async function runAll() {
 }
 
 async function main() {
+  await ensureInitialized();
+
   const arg = process.argv[2];
 
   if (!arg) {

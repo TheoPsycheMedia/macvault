@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { ensureInitialized } from "@/lib/db";
 import { submitVote } from "@/lib/repository";
 import type { VoteType } from "@/lib/types";
 import { deriveVisitorId } from "@/lib/visitor";
@@ -11,6 +12,8 @@ interface ToolVoteRouteContext {
 }
 
 export async function POST(request: Request, { params }: ToolVoteRouteContext) {
+  await ensureInitialized();
+
   const { slug } = await params;
 
   const body = (await request.json().catch(() => null)) as { voteType?: VoteType } | null;
@@ -21,7 +24,7 @@ export async function POST(request: Request, { params }: ToolVoteRouteContext) {
   }
 
   const visitorId = deriveVisitorId(request);
-  const result = submitVote(slug, visitorId, voteType);
+  const result = await submitVote(slug, visitorId, voteType);
 
   if (!result) {
     return NextResponse.json({ message: "Tool not found" }, { status: 404 });

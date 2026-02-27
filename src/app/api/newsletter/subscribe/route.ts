@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { ensureInitialized } from "@/lib/db";
 import { subscribeToNewsletter } from "@/lib/repository";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  await ensureInitialized();
+
   const body = (await request.json().catch(() => null)) as { email?: string } | null;
   const email = body?.email?.trim();
 
@@ -12,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Email is required" }, { status: 400 });
   }
 
-  const result = subscribeToNewsletter(email);
+  const result = await subscribeToNewsletter(email);
 
   if (!result.created && result.reason === "Invalid email format") {
     return NextResponse.json({ message: result.reason }, { status: 400 });

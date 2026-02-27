@@ -1,4 +1,4 @@
-import { db } from "../db-core";
+import { execute } from "../db-core";
 import type {
   CandidateContext,
   DiscoveryAiScores,
@@ -52,6 +52,58 @@ function requireGitHubToken() {
   }
 
   return token;
+}
+
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function toNullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function mapCandidateRow(row: Record<string, unknown>): DiscoveryQueueItem {
+  return {
+    id: toNumber(row.id),
+    githubUrl: toStringValue(row.githubUrl),
+    repoFullName: toStringValue(row.repoFullName),
+    name: toStringValue(row.name),
+    description: toNullableString(row.description),
+    starCount: toNumber(row.starCount),
+    forkCount: toNumber(row.forkCount),
+    language: toNullableString(row.language),
+    lastCommitDate: toNullableString(row.lastCommitDate),
+    license: toNullableString(row.license),
+    topics: toStringValue(row.topics) || "[]",
+    readmeExcerpt: toNullableString(row.readmeExcerpt),
+    status: toStringValue(row.status) as DiscoveryQueueItem["status"],
+    aiSummary: toNullableString(row.aiSummary),
+    aiScores: toNullableString(row.aiScores),
+    aiCategory: toNullableString(row.aiCategory),
+    aiSubcategory: toNullableString(row.aiSubcategory),
+    aiBrewCommand: toNullableString(row.aiBrewCommand),
+    aiInstallInstructions: toNullableString(row.aiInstallInstructions),
+    evaluatedAt: toNullableString(row.evaluatedAt),
+    createdAt: toStringValue(row.createdAt),
+    updatedAt: toStringValue(row.updatedAt),
+  };
 }
 
 async function respectRateLimit(headers: Headers) {
@@ -172,22 +224,22 @@ async function fetchOpenIssues(repoFullName: string, token: string) {
   }
 }
 
-function getCandidate(queueId: number) {
-  return db
-    .prepare("SELECT * FROM discovery_queue WHERE id = ? LIMIT 1")
-    .get(queueId) as DiscoveryQueueItem | undefined;
+async function getCandidate(queueId: number) {
+  const result = await execute("SELECT * FROM discovery_queue WHERE id = ? LIMIT 1", [queueId]);
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  return row ? mapCandidateRow(row) : undefined;
 }
 
-function getCategorySlugs() {
-  const categories = db
-    .prepare("SELECT slug FROM categories ORDER BY name ASC")
-    .all() as Array<{ slug: string }>;
+async function getCategorySlugs() {
+  const result = await execute("SELECT slug FROM categories ORDER BY name ASC");
 
-  return categories.map((row) => row.slug);
+  return result.rows
+    .map((row) => toStringValue((row as Record<string, unknown>).slug))
+    .filter(Boolean);
 }
 
 export async function fetchCandidateContext(queueId: number): Promise<CandidateContext> {
-  const candidate = getCandidate(queueId);
+  const candidate = await getCandidate(queueId);
   if (!candidate) {
     throw new Error(`Candidate ${queueId} not found`);
   }
@@ -208,13 +260,13 @@ export async function fetchCandidateContext(queueId: number): Promise<CandidateC
   };
 }
 
-export function saveCandidateEvaluation(queueId: number, evaluation: EvaluationResult) {
-  const candidate = getCandidate(queueId);
+export async function saveCandidateEvaluation(queueId: number, evaluation: EvaluationResult) {
+  const candidate = await getCandidate(queueId);
   if (!candidate) {
     throw new Error(`Candidate ${queueId} not found`);
   }
 
-  const categorySlugs = getCategorySlugs();
+  const categorySlugs = await getCategorySlugs();
   const status = evaluation.isApproved ? "approved" : "rejected";
   const evaluatedAt = new Date().toISOString();
   const summary = normalizeText(evaluation.summary, "No summary available.");
@@ -227,33 +279,34 @@ export function saveCandidateEvaluation(queueId: number, evaluation: EvaluationR
     "Review the project README for installation instructions.",
   );
 
-  db.prepare(
+  await execute(
     `
       UPDATE discovery_queue
       SET
-        status = @status,
-        aiSummary = @aiSummary,
-        aiScores = @aiScores,
-        aiCategory = @aiCategory,
-        aiSubcategory = @aiSubcategory,
-        aiBrewCommand = @aiBrewCommand,
-        aiInstallInstructions = @aiInstallInstructions,
-        evaluatedAt = @evaluatedAt,
-        updatedAt = @updatedAt
-      WHERE id = @id
+        status = ?,
+        aiSummary = ?,
+        aiScores = ?,
+        aiCategory = ?,
+        aiSubcategory = ?,
+        aiBrewCommand = ?,
+        aiInstallInstructions = ?,
+        evaluatedAt = ?,
+        updatedAt = ?
+      WHERE id = ?
     `,
-  ).run({
-    id: queueId,
-    status,
-    aiSummary: summary,
-    aiScores: JSON.stringify(scores),
-    aiCategory: category,
-    aiSubcategory: subcategory,
-    aiBrewCommand: brewCommand,
-    aiInstallInstructions: installInstructions,
-    evaluatedAt,
-    updatedAt: evaluatedAt,
-  });
+    [
+      status,
+      summary,
+      JSON.stringify(scores),
+      category,
+      subcategory,
+      brewCommand,
+      installInstructions,
+      evaluatedAt,
+      evaluatedAt,
+      queueId,
+    ],
+  );
 
   return {
     queueId,

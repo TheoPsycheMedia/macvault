@@ -28,7 +28,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   const category = params.category && params.category !== "all" ? params.category : undefined;
   const search = params.search?.trim() || undefined;
 
-  const [categories, tools] = [
+  const [categories, tools] = await Promise.all([
     listCategories(),
     listTools({
       category,
@@ -37,7 +37,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
       sort,
       limit: 120,
     }),
-  ];
+  ]);
 
   return (
     <div className="editorial-shell pb-24 pt-10 md:pt-14">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { ensureInitialized } from "@/lib/db";
 import { listTools } from "@/lib/repository";
 import type { ToolSort } from "@/lib/types";
 
@@ -7,7 +8,9 @@ export const runtime = "nodejs";
 
 const allowedSorts: ToolSort[] = ["score", "stars", "recent", "votes"];
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
+  await ensureInitialized();
+
   const { searchParams } = request.nextUrl;
 
   const category = searchParams.get("category");
@@ -23,7 +26,7 @@ export function GET(request: NextRequest) {
   const limitRaw = Number(searchParams.get("limit") ?? "100");
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 100;
 
-  const tools = listTools({
+  const tools = await listTools({
     category: category && category !== "all" ? category : undefined,
     search,
     minScore,

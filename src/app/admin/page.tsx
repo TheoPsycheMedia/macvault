@@ -1,14 +1,36 @@
 import Link from "next/link";
 import { Check, Package, Search, Upload, X } from "lucide-react";
 
-import { db } from "@/lib/db";
+import { execute } from "@/lib/db";
 
-export default function AdminPage() {
-  const totalToolsRow = db.prepare("SELECT COUNT(*) AS count FROM tools").get() as { count: number };
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
 
-  const queueRows = db
-    .prepare("SELECT status, COUNT(*) AS count FROM discovery_queue GROUP BY status")
-    .all() as Array<{ status: string; count: number }>;
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+export default async function AdminPage() {
+  const totalToolsResult = await execute("SELECT COUNT(*) AS count FROM tools");
+  const totalTools = toNumber((totalToolsResult.rows[0] as Record<string, unknown> | undefined)?.count);
+
+  const queueResult = await execute("SELECT status, COUNT(*) AS count FROM discovery_queue GROUP BY status");
+  const queueRows = queueResult.rows.map((row) => ({
+    status: typeof (row as Record<string, unknown>).status === "string"
+      ? ((row as Record<string, unknown>).status as string)
+      : "",
+    count: toNumber((row as Record<string, unknown>).count),
+  }));
 
   const queueByStatus = new Map(
     queueRows.map((row) => [row.status, Number(row.count)]),
@@ -40,7 +62,7 @@ export default function AdminPage() {
               Total Published Tools
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-[color:var(--text)]">
-              {totalToolsRow.count}
+              {totalTools}
             </p>
           </article>
 

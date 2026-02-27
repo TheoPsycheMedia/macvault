@@ -15,11 +15,13 @@ import {
 } from "@/lib/repository";
 import { formatCompactNumber, formatDate } from "@/lib/utils";
 
-export default function Home() {
-  const featuredTools = listFeaturedTools(4);
-  const trendingTools = listTrendingTools(6);
-  const categoryList = listCategories();
-  const recentlyAdded = listRecentTools(4);
+export default async function Home() {
+  const [featuredTools, trendingTools, categoryList, recentlyAdded] = await Promise.all([
+    listFeaturedTools(4),
+    listTrendingTools(6),
+    listCategories(),
+    listRecentTools(4),
+  ]);
 
   return (
     <div className="editorial-shell pb-24 pt-10 md:pt-14">

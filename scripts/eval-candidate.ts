@@ -1,3 +1,4 @@
+import { ensureInitialized } from "../src/lib/db-core";
 import { fetchCandidateContext } from "../src/lib/discovery/evaluator";
 
 function parseTopics(rawTopics: string) {
@@ -23,6 +24,8 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+
+  await ensureInitialized();
 
   const { candidate, readme, recentCommits, openIssuesCount } = await fetchCandidateContext(queueId);
   const readmeExcerpt = readme.slice(0, 3000);

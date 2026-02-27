@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSession, getAdminByEmail, updateLastLogin, verifyPassword } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { ensureInitialized, execute } from "@/lib/db";
 
 interface LoginPayload {
   email?: string;
@@ -62,6 +62,8 @@ function markFailedAttempt(email: string, now: number) {
 }
 
 export async function POST(request: Request) {
+  await ensureInitialized();
+
   let payload: LoginPayload | null = null;
 
   try {
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const admin = getAdminByEmail(email);
+  const admin = await getAdminByEmail(email);
   if (!admin) {
     markFailedAttempt(email, now);
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
@@ -98,19 +100,20 @@ export async function POST(request: Request) {
   }
 
   failedAttemptsByEmail.delete(email);
-  updateLastLogin(admin.id);
+  await updateLastLogin(admin.id);
 
   const token = createSession();
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + SESSION_TTL_MS).toISOString();
 
-  db.prepare("DELETE FROM admin_sessions WHERE expiresAt <= ?").run(createdAt.toISOString());
-  db.prepare(
+  await execute("DELETE FROM admin_sessions WHERE expiresAt <= ?", [createdAt.toISOString()]);
+  await execute(
     `
-    INSERT INTO admin_sessions (token, userId, expiresAt, createdAt)
-    VALUES (?, ?, ?, ?)
-  `,
-  ).run(token, admin.id, expiresAt, createdAt.toISOString());
+      INSERT INTO admin_sessions (token, userId, expiresAt, createdAt)
+      VALUES (?, ?, ?, ?)
+    `,
+    [token, admin.id, expiresAt, createdAt.toISOString()],
+  );
 
   return NextResponse.json({ ok: true, token, expiresAt });
 }

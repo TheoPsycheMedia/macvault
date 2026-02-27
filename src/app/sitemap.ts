@@ -1,32 +1,38 @@
 import type { MetadataRoute } from "next";
 
-import { db } from "@/lib/db";
+import { execute } from "@/lib/db";
 
 const SITE_URL = "https://macvault.vercel.app";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const toolRows = db
-    .prepare(
-      `
+  const [toolResult, categoryResult] = await Promise.all([
+    execute(`
       SELECT slug, updatedAt
       FROM tools
       WHERE isPublished = 1
       ORDER BY datetime(updatedAt) DESC
-    `,
-    )
-    .all() as Array<{ slug: string; updatedAt: string }>;
-
-  const categoryRows = db
-    .prepare(
-      `
+    `),
+    execute(`
       SELECT slug
       FROM categories
       ORDER BY name ASC
-    `,
-    )
-    .all() as Array<{ slug: string }>;
+    `),
+  ]);
+
+  const toolRows = toolResult.rows.map((row) => ({
+    slug: toStringValue((row as Record<string, unknown>).slug),
+    updatedAt: toStringValue((row as Record<string, unknown>).updatedAt),
+  }));
+
+  const categoryRows = categoryResult.rows.map((row) => ({
+    slug: toStringValue((row as Record<string, unknown>).slug),
+  }));
 
   const staticPages: MetadataRoute.Sitemap = [
     {

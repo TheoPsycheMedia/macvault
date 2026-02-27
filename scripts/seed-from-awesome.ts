@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { db } from "../src/lib/db-core";
+import { ensureInitialized, execute } from "../src/lib/db-core";
 
 const AWESOME_LIST_SOURCES = [
   "https://raw.githubusercontent.com/jaywcjlove/awesome-mac/master/README.md",
@@ -44,6 +44,10 @@ function sleep(ms: number) {
 
 function normalizeGitHubUrl(url: string) {
   return url.trim().replace(/^http:\/\//i, "https://").replace(/\/+$/, "").toLowerCase();
+}
+
+function toStringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
 }
 
 function loadEnvFromDotLocal() {
@@ -183,6 +187,8 @@ function pickLicense(license: GitHubLicense | null) {
 }
 
 async function main() {
+  await ensureInitialized();
+
   const token = requireGitHubToken();
   const markdownBodies = await Promise.all(AWESOME_LIST_SOURCES.map((url) => fetchMarkdown(url)));
 
@@ -193,49 +199,17 @@ async function main() {
     }
   }
 
-  const existingRows = db
-    .prepare(
-      `
-      SELECT githubUrl FROM tools
-      UNION
-      SELECT githubUrl FROM discovery_queue
-    `,
-    )
-    .all() as Array<{ githubUrl: string }>;
-
-  const knownUrls = new Set(existingRows.map((row) => normalizeGitHubUrl(row.githubUrl)));
-
-  const insertCandidate = db.prepare(`
-    INSERT OR IGNORE INTO discovery_queue (
-      githubUrl,
-      repoFullName,
-      name,
-      description,
-      starCount,
-      forkCount,
-      language,
-      lastCommitDate,
-      license,
-      topics,
-      status,
-      createdAt,
-      updatedAt
-    ) VALUES (
-      @githubUrl,
-      @repoFullName,
-      @name,
-      @description,
-      @starCount,
-      @forkCount,
-      @language,
-      @lastCommitDate,
-      @license,
-      @topics,
-      'pending',
-      @createdAt,
-      @updatedAt
-    )
+  const existingRows = await execute(`
+    SELECT githubUrl FROM tools
+    UNION
+    SELECT githubUrl FROM discovery_queue
   `);
+
+  const knownUrls = new Set(
+    existingRows.rows
+      .map((row) => normalizeGitHubUrl(toStringValue((row as Record<string, unknown>).githubUrl)))
+      .filter(Boolean),
+  );
 
   let addedCount = 0;
   let skippedExisting = 0;
@@ -266,22 +240,43 @@ async function main() {
     }
 
     const now = new Date().toISOString();
-    const insertResult = insertCandidate.run({
-      githubUrl: repoInfo.html_url,
-      repoFullName: repoInfo.full_name,
-      name: repoInfo.name,
-      description: repoInfo.description,
-      starCount: repoInfo.stargazers_count,
-      forkCount: repoInfo.forks_count,
-      language: repoInfo.language,
-      lastCommitDate: repoInfo.pushed_at,
-      license: pickLicense(repoInfo.license),
-      topics: JSON.stringify(Array.isArray(repoInfo.topics) ? repoInfo.topics : []),
-      createdAt: now,
-      updatedAt: now,
-    });
+    const insertResult = await execute(
+      `
+        INSERT OR IGNORE INTO discovery_queue (
+          githubUrl,
+          repoFullName,
+          name,
+          description,
+          starCount,
+          forkCount,
+          language,
+          lastCommitDate,
+          license,
+          topics,
+          status,
+          createdAt,
+          updatedAt
+        ) VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
+        )
+      `,
+      [
+        repoInfo.html_url,
+        repoInfo.full_name,
+        repoInfo.name,
+        repoInfo.description,
+        repoInfo.stargazers_count,
+        repoInfo.forks_count,
+        repoInfo.language,
+        repoInfo.pushed_at,
+        pickLicense(repoInfo.license),
+        JSON.stringify(Array.isArray(repoInfo.topics) ? repoInfo.topics : []),
+        now,
+        now,
+      ],
+    );
 
-    if (insertResult.changes > 0) {
+    if (Number(insertResult.rowsAffected ?? 0) > 0) {
       addedCount += 1;
       knownUrls.add(normalizeGitHubUrl(repoInfo.html_url));
       console.log(`Added: ${repoInfo.full_name} (★ ${repoInfo.stargazers_count})`);

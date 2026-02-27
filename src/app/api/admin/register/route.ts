@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { ensureInitialized, execute } from "@/lib/db";
 
 interface RegisterPayload {
   email?: string;
@@ -18,12 +18,31 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function getAdminCount() {
-  const row = db.prepare("SELECT COUNT(*) AS count FROM admin_users").get() as { count: number };
-  return Number(row.count);
+function toNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+async function getAdminCount() {
+  const result = await execute("SELECT COUNT(*) AS count FROM admin_users");
+  return toNumber((result.rows[0] as Record<string, unknown> | undefined)?.count);
 }
 
 export async function POST(request: Request) {
+  await ensureInitialized();
+
   let payload: RegisterPayload | null = null;
 
   try {
@@ -48,7 +67,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const existingAdminCount = getAdminCount();
+  const existingAdminCount = await getAdminCount();
   if (existingAdminCount > 0) {
     const expectedSetupKey = process.env.ADMIN_SETUP_KEY;
     if (!expectedSetupKey) {

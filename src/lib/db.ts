@@ -1,3 +1,3 @@
 import "server-only";
 
-export { db } from "./db-core";
+export { ensureInitialized, execute, executeMany, getClient, getDb } from "./db-core";

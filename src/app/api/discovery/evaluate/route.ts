@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { ensureInitialized } from "@/lib/db";
 import { isCronAuthorized } from "@/lib/discovery/auth";
 import { saveCandidateEvaluation } from "@/lib/discovery/evaluator";
 import type { DiscoveryAiScores, EvaluationResult } from "@/lib/discovery/types";
@@ -77,6 +78,8 @@ function parseEvaluationBody(body: unknown): { queueId: number; evaluation: Eval
 }
 
 export async function POST(request: Request) {
+  await ensureInitialized();
+
   if (!isCronAuthorized(request)) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
@@ -101,7 +104,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const saved = saveCandidateEvaluation(parsed.queueId, parsed.evaluation);
+    const saved = await saveCandidateEvaluation(parsed.queueId, parsed.evaluation);
     return NextResponse.json({ saved: true, ...saved });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save evaluation";
