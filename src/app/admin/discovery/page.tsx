@@ -112,7 +112,7 @@ function averageScore(scores: DiscoveryScores | null) {
 }
 
 export default function AdminDiscoveryPage() {
-  const [activeStatus, setActiveStatus] = useState<QueueStatus>("approved");
+  const [activeStatus, setActiveStatus] = useState<QueueStatus>("pending");
   const [items, setItems] = useState<DiscoveryQueueApiItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

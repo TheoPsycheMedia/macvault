@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
   const status =
     statusParam && allowedStatuses.includes(statusParam as DiscoveryStatus)
       ? (statusParam as DiscoveryStatus)
-      : "approved";
+      : "pending";
 
   const result = await execute(
     `
