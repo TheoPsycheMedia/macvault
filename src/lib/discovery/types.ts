@@ -16,6 +16,12 @@ export interface DiscoveryAiScores {
   community: number;
 }
 
+export interface DiscoveryCommitContext {
+  sha: string;
+  message: string;
+  date: string | null;
+}
+
 export interface DiscoveryQueueItem {
   id: number;
   githubUrl: string;
@@ -42,13 +48,18 @@ export interface DiscoveryQueueItem {
 }
 
 export interface EvaluationResult {
-  queueId: number;
-  status: "approved" | "rejected";
-  isMacTool: boolean;
   summary: string;
-  category: string;
-  subcategory: string;
-  brewCommand: string;
-  installInstructions: string;
   scores: DiscoveryAiScores;
+  category: string;
+  subcategory?: string;
+  brewCommand?: string;
+  installInstructions?: string;
+  isApproved: boolean;
+}
+
+export interface CandidateContext {
+  candidate: DiscoveryQueueItem;
+  readme: string;
+  recentCommits: DiscoveryCommitContext[];
+  openIssuesCount: number;
 }

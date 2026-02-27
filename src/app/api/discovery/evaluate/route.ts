@@ -1,15 +1,79 @@
 import { NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
 import { isCronAuthorized } from "@/lib/discovery/auth";
-import { evaluateCandidate } from "@/lib/discovery/evaluator";
+import { saveCandidateEvaluation } from "@/lib/discovery/evaluator";
+import type { DiscoveryAiScores, EvaluationResult } from "@/lib/discovery/types";
 
 export const runtime = "nodejs";
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
+const scoreKeys: Array<keyof DiscoveryAiScores> = [
+  "design",
+  "performance",
+  "documentation",
+  "maintenance",
+  "integration",
+  "uniqueness",
+  "value",
+  "community",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseScores(value: unknown) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const parsed = {} as DiscoveryAiScores;
+
+  for (const key of scoreKeys) {
+    const score = Number(value[key]);
+    if (!Number.isFinite(score)) {
+      return null;
+    }
+
+    parsed[key] = score;
+  }
+
+  return parsed;
+}
+
+function parseEvaluationBody(body: unknown): { queueId: number; evaluation: EvaluationResult } | null {
+  if (!isRecord(body)) {
+    return null;
+  }
+
+  const queueId = Number(body.queueId);
+  const summary = typeof body.summary === "string" ? body.summary : null;
+  const category = typeof body.category === "string" ? body.category : null;
+  const isApproved = typeof body.isApproved === "boolean" ? body.isApproved : null;
+  const scores = parseScores(body.scores);
+
+  if (!Number.isInteger(queueId) || queueId <= 0) {
+    return null;
+  }
+
+  if (!summary || !category || isApproved === null || !scores) {
+    return null;
+  }
+
+  const evaluation: EvaluationResult = {
+    summary,
+    scores,
+    category,
+    subcategory: typeof body.subcategory === "string" ? body.subcategory : undefined,
+    brewCommand: typeof body.brewCommand === "string" ? body.brewCommand : undefined,
+    installInstructions:
+      typeof body.installInstructions === "string" ? body.installInstructions : undefined,
+    isApproved,
+  };
+
+  return {
+    queueId,
+    evaluation,
+  };
 }
 
 export async function POST(request: Request) {
@@ -17,42 +81,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
+  let payload: unknown;
+
   try {
-    const pendingRows = db
-      .prepare(
-        `
-        SELECT id
-        FROM discovery_queue
-        WHERE status = 'pending'
-        ORDER BY starCount DESC, datetime(createdAt) ASC
-        LIMIT 10
-      `,
-      )
-      .all() as Array<{ id: number }>;
+    payload = await request.json();
+  } catch {
+    return NextResponse.json({ message: "Invalid JSON body" }, { status: 400 });
+  }
 
-    let approved = 0;
-    let rejected = 0;
-    let evaluated = 0;
+  const parsed = parseEvaluationBody(payload);
+  if (!parsed) {
+    return NextResponse.json(
+      {
+        message:
+          "Body must include queueId, summary, scores, category, and isApproved (plus optional subcategory, brewCommand, installInstructions).",
+      },
+      { status: 400 },
+    );
+  }
 
-    for (let index = 0; index < pendingRows.length; index += 1) {
-      const row = pendingRows[index];
-      const result = await evaluateCandidate(row.id);
-      evaluated += 1;
-
-      if (result.status === "approved") {
-        approved += 1;
-      } else {
-        rejected += 1;
-      }
-
-      if (index < pendingRows.length - 1) {
-        await sleep(350);
-      }
-    }
-
-    return NextResponse.json({ evaluated, approved, rejected });
+  try {
+    const saved = saveCandidateEvaluation(parsed.queueId, parsed.evaluation);
+    return NextResponse.json({ saved: true, ...saved });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Evaluation run failed";
-    return NextResponse.json({ message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to save evaluation";
+    const status = message.includes("not found") ? 404 : 500;
+    return NextResponse.json({ message }, { status });
   }
 }

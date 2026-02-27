@@ -1,14 +1,12 @@
-import { runDiscoveryPipeline } from "../src/lib/discovery/pipeline";
+import { scanGitHub } from "../src/lib/discovery/scanner";
 
 async function main() {
   const startedAt = new Date();
-  console.log(`[discovery] Starting pipeline at ${startedAt.toISOString()}`);
+  console.log(`[discovery] Starting scanner at ${startedAt.toISOString()}`);
 
-  const summary = await runDiscoveryPipeline();
+  const newCandidates = await scanGitHub();
 
-  console.log(
-    `[discovery] Complete. scanned=${summary.scanned} evaluated=${summary.evaluated} approved=${summary.approved} rejected=${summary.rejected}`,
-  );
+  console.log(`[discovery] Complete. newCandidates=${newCandidates}`);
 }
 
 main().catch((error) => {
