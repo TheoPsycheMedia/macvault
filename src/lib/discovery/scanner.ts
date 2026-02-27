@@ -1,6 +1,4 @@
-import "server-only";
-
-import { db } from "../db";
+import { db } from "../db-core";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const SEARCH_PAGE_SIZE = 100;

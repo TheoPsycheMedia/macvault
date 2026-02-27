@@ -1,6 +1,4 @@
-import "server-only";
-
-import { db } from "../db";
+import { db } from "../db-core";
 import type {
   CandidateContext,
   DiscoveryAiScores,
