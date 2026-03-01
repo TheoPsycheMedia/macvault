@@ -21,6 +21,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: result.reason }, { status: 400 });
   }
 
+  // Fire-and-forget welcome email for new subscribers
+  if (result.created) {
+    import("@/lib/resend")
+      .then(({ sendWelcomeEmail }) => sendWelcomeEmail(email))
+      .catch(() => {});
+  }
+
   return NextResponse.json({
     success: true,
     message: result.created
