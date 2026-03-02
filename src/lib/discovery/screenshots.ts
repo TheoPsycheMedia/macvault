@@ -27,6 +27,13 @@ interface ReadmeImageCandidate {
   score: number;
 }
 
+interface ReadmeImageReference {
+  rawAlt: string;
+  rawRef: string;
+  index: number;
+  rawMatch: string;
+}
+
 function normalizeToolSlug(toolSlug: string) {
   const normalized = toolSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
   return normalized.replace(/-+/g, "-").replace(/^-+|-+$/g, "") || "tool";
@@ -154,6 +161,28 @@ function hasScreenshotKeyword(value: string) {
   return /\b(screenshot|preview|demo|ui|interface|app)\b/i.test(value);
 }
 
+function hasDecorativeKeyword(value: string) {
+  return /\b(banner|header|social|logo|brand|cover)\b/i.test(value);
+}
+
+function hasSvgExtension(imageUrl: string) {
+  try {
+    const pathname = new URL(imageUrl).pathname.toLowerCase();
+    return pathname.endsWith(".svg");
+  } catch {
+    return /\.svg(?:$|[?#])/i.test(imageUrl);
+  }
+}
+
+function isGitHubSocialPreviewUrl(imageUrl: string) {
+  try {
+    const hostname = new URL(imageUrl).hostname.toLowerCase();
+    return hostname === "opengraph.githubassets.com";
+  } catch {
+    return /opengraph\.githubassets\.com/i.test(imageUrl);
+  }
+}
+
 function isBadgeLike(altText: string, imageUrl: string, nearbyText: string) {
   const context = `${altText} ${imageUrl} ${nearbyText}`.toLowerCase();
 
@@ -224,57 +253,123 @@ function resolveReadmeImageUrl(imageRef: string, readmeBaseUrl: string, rawRootU
   }
 }
 
-function collectReadmeImages(markdown: string, readmeBaseUrl: string, rawRootUrl: string) {
+function collectMarkdownImageRefs(markdown: string): ReadmeImageReference[] {
   const imageRegex = /!\[([^\]]*)\]\(([^)\n]+)\)/g;
-  const candidates: ReadmeImageCandidate[] = [];
-  const seen = new Set<string>();
+  const refs: ReadmeImageReference[] = [];
 
   for (const match of markdown.matchAll(imageRegex)) {
-    const rawAlt = (match[1] ?? "").trim();
-    const rawRef = (match[2] ?? "").trim();
-    const index = match.index ?? 0;
-    const nearbyStart = Math.max(0, index - 450);
-    const nearbyText = markdown.slice(nearbyStart, index + match[0].length).toLowerCase();
+    refs.push({
+      rawAlt: (match[1] ?? "").trim(),
+      rawRef: (match[2] ?? "").trim(),
+      index: match.index ?? 0,
+      rawMatch: match[0] ?? "",
+    });
+  }
+
+  return refs;
+}
+
+function collectHtmlImageRefs(markdown: string): ReadmeImageReference[] {
+  const imgTagRegex = /<img\b[^>]*>/gi;
+  const refs: ReadmeImageReference[] = [];
+
+  for (const match of markdown.matchAll(imgTagRegex)) {
+    const tag = match[0] ?? "";
+    const srcMatch = tag.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const rawRef = (srcMatch?.[1] ?? srcMatch?.[2] ?? srcMatch?.[3] ?? "").trim();
+
+    if (!rawRef) {
+      continue;
+    }
+
+    const altMatch = tag.match(/\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const rawAlt = (altMatch?.[1] ?? altMatch?.[2] ?? altMatch?.[3] ?? "").trim();
+
+    refs.push({
+      rawAlt,
+      rawRef,
+      index: match.index ?? 0,
+      rawMatch: tag,
+    });
+  }
+
+  return refs;
+}
+
+function scoreReadmeImage(
+  altText: string,
+  resolvedUrl: string,
+  nearbyHeading: string,
+  nearbyText: string,
+) {
+  let score = 1;
+  if (hasScreenshotKeyword(altText)) {
+    score += 4;
+  }
+  if (hasScreenshotKeyword(nearbyHeading)) {
+    score += 3;
+  }
+  if (hasScreenshotKeyword(resolvedUrl)) {
+    score += 2;
+  }
+  if (hasScreenshotKeyword(nearbyText)) {
+    score += 1;
+  }
+
+  if (hasSvgExtension(resolvedUrl)) {
+    score -= 3;
+  }
+  if (hasDecorativeKeyword(altText) || hasDecorativeKeyword(resolvedUrl)) {
+    score -= 3;
+  }
+  if (isGitHubSocialPreviewUrl(resolvedUrl)) {
+    score -= 2;
+  }
+
+  return score;
+}
+
+function collectReadmeImages(markdown: string, readmeBaseUrl: string, rawRootUrl: string) {
+  const references = [...collectMarkdownImageRefs(markdown), ...collectHtmlImageRefs(markdown)].sort(
+    (a, b) => a.index - b.index,
+  );
+  const candidatesByUrl = new Map<string, ReadmeImageCandidate>();
+
+  for (const reference of references) {
+    const nearbyStart = Math.max(0, reference.index - 450);
+    const nearbyText = markdown
+      .slice(nearbyStart, reference.index + reference.rawMatch.length)
+      .toLowerCase();
 
     const headingMatches = Array.from(nearbyText.matchAll(/(?:^|\n)#{1,6}\s+([^\n]+)/g));
     const nearbyHeading = headingMatches.at(-1)?.[1] ?? "";
 
-    if (isBadgeLike(rawAlt, rawRef, nearbyText)) {
+    if (isBadgeLike(reference.rawAlt, reference.rawRef, nearbyText)) {
       continue;
     }
 
-    const resolvedUrl = resolveReadmeImageUrl(rawRef, readmeBaseUrl, rawRootUrl);
-    if (!resolvedUrl || seen.has(resolvedUrl)) {
+    const resolvedUrl = resolveReadmeImageUrl(reference.rawRef, readmeBaseUrl, rawRootUrl);
+    if (!resolvedUrl) {
       continue;
     }
 
-    if (isTinyIconReference(rawAlt, resolvedUrl)) {
+    if (isTinyIconReference(reference.rawAlt, resolvedUrl)) {
       continue;
     }
 
-    let score = 1;
-    if (hasScreenshotKeyword(rawAlt)) {
-      score += 4;
-    }
-    if (hasScreenshotKeyword(nearbyHeading)) {
-      score += 3;
-    }
-    if (hasScreenshotKeyword(resolvedUrl)) {
-      score += 2;
-    }
-    if (hasScreenshotKeyword(nearbyText)) {
-      score += 1;
-    }
+    const score = scoreReadmeImage(reference.rawAlt, resolvedUrl, nearbyHeading, nearbyText);
+    const existing = candidatesByUrl.get(resolvedUrl);
 
-    seen.add(resolvedUrl);
-    candidates.push({
-      altText: rawAlt,
-      imageUrl: resolvedUrl,
-      score,
-    });
+    if (!existing || score > existing.score) {
+      candidatesByUrl.set(resolvedUrl, {
+        altText: reference.rawAlt,
+        imageUrl: resolvedUrl,
+        score,
+      });
+    }
   }
 
-  return candidates.sort((a, b) => b.score - a.score);
+  return Array.from(candidatesByUrl.values()).sort((a, b) => b.score - a.score);
 }
 
 function normalizeWebsiteUrl(input: string) {
@@ -440,7 +535,10 @@ async function extractFromReadme(repoFullName: string, toolSlug: string) {
 
   const { readmeBaseUrl, rawRootUrl } = buildReadmeUrlContext(payload.download_url);
   const rankedImages = collectReadmeImages(markdown, readmeBaseUrl, rawRootUrl);
-  const selected = rankedImages.slice(0, MAX_README_SCREENSHOTS).map((item) => item.imageUrl);
+  const selected = rankedImages
+    .filter((item) => item.score >= 2)
+    .slice(0, MAX_README_SCREENSHOTS)
+    .map((item) => item.imageUrl);
 
   if (selected.length === 0) {
     return [];
