@@ -21,8 +21,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: result.reason }, { status: 400 });
   }
 
-  // Fire-and-forget welcome email for new subscribers
-  if (result.created) {
+  // Save to DB regardless of email provider setup.
+  // Only attempt welcome email dispatch when Resend is configured.
+  if (result.created && process.env.RESEND_API_KEY?.trim()) {
     import("@/lib/resend")
       .then(({ sendWelcomeEmail }) => sendWelcomeEmail(email))
       .catch(() => {});
