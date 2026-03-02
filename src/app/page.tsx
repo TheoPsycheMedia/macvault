@@ -33,25 +33,77 @@ export default async function Home() {
           Curated Mac Software
         </p>
         <h1 className="mt-4 max-w-4xl text-[48px] font-semibold leading-[1.03] tracking-[-0.02em] text-[color:var(--text)] md:text-[56px]">
-          Discover the best open-source Mac tools.
+          The Mac app you install next should earn it.
         </h1>
         <p className="mt-5 max-w-2xl text-[16px] text-[color:var(--text-muted)]">
           MacVault is an editorial catalog for people who care about practical software quality,
           maintainability, and taste.
         </p>
-        <div className="mt-8 max-w-3xl">
-          <SearchBar size="lg" />
-        </div>
         <div className="mt-6 flex flex-wrap gap-2.5">
           <span className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-1.5 text-sm text-[color:var(--text-muted)]">
-            52 curated tools
+            17 curated tools
           </span>
           <span className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-1.5 text-sm text-[color:var(--text-muted)]">
             Transparent scoring
           </span>
           <span className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-1.5 text-sm text-[color:var(--text-muted)]">
-            Homebrew-ready installs
+            Homebrew-ready
           </span>
+        </div>
+        <div className="mt-8 max-w-3xl">
+          <SearchBar size="lg" />
+        </div>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link
+            href="/browse"
+            className="rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black"
+          >
+            Browse All Tools
+          </Link>
+          <Link
+            href="/browse?sort=score"
+            className="rounded-full border border-[color:var(--border)] px-5 py-2.5 text-sm text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+          >
+            Top Rated
+          </Link>
+        </div>
+        <div
+          className="relative mt-8 overflow-hidden"
+          style={{
+            maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
+          }}
+        >
+          <div className="marquee-track flex w-max gap-2">
+            {[
+              "Raycast",
+              "Rectangle",
+              "Maccy",
+              "AlDente",
+              "Stats",
+              "Pockity",
+              "Tot",
+              "Keka",
+              "Hand Mirror",
+              "Lungo",
+              "Raycast",
+              "Rectangle",
+              "Maccy",
+              "AlDente",
+              "Stats",
+              "Pockity",
+              "Tot",
+              "Keka",
+              "Hand Mirror",
+              "Lungo",
+            ].map((name, i) => (
+              <span
+                key={i}
+                className="whitespace-nowrap rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-1.5 text-sm text-[color:var(--text-muted)]"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 

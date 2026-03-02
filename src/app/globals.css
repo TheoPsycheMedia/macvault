@@ -96,6 +96,19 @@ button {
   animation-delay: var(--fade-delay, 0s);
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 20s linear infinite;
+}
+
 @keyframes section-fade {
   from {
     opacity: 0;
