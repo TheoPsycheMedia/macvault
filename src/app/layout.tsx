@@ -30,6 +30,11 @@ export const metadata: Metadata = {
     template: "%s | MacVault",
   },
   description: "Discover the best Mac tools, scored and curated for practical macOS workflows.",
+  alternates: {
+    types: {
+      "application/rss+xml": "https://macvault.vercel.app/rss.xml",
+    },
+  },
 };
 
 export default function RootLayout({
