@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { CategoryCard } from "@/components/CategoryCard";
 import { listCategories } from "@/lib/repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function CategoriesPage() {
   const categories = await listCategories();
 

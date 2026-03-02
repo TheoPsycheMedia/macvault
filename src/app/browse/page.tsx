@@ -6,6 +6,8 @@ import { ToolCard } from "@/components/ToolCard";
 import { listCategories, listTools } from "@/lib/repository";
 import type { ToolSort } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 interface BrowsePageProps {
   searchParams: Promise<{
     category?: string;

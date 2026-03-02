@@ -7,6 +7,8 @@ import { ToolCard } from "@/components/ToolCard";
 import { getCategoryBySlug, listTools } from "@/lib/repository";
 import type { ToolSort } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 interface CategoryDetailPageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ sort?: ToolSort; minScore?: string; search?: string }>;

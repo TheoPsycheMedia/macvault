@@ -3,6 +3,8 @@ import { Check, Package, Search, Upload, X } from "lucide-react";
 
 import { execute } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 function toNumber(value: unknown) {
   if (typeof value === "number") {
     return value;

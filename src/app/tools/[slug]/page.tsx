@@ -11,6 +11,8 @@ import { VoteButtons } from "@/components/VoteButtons";
 import { getToolBySlug, listSimilarTools } from "@/lib/repository";
 import { formatCompactNumber, formatDate, formatRelativeDate } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 const SITE_URL = "https://macvault.vercel.app";
 
 interface ToolDetailPageProps {
