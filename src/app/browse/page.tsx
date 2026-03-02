@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import { ActiveFilters } from "@/components/ActiveFilters";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { ToolCard } from "@/components/ToolCard";
 import { listCategories, listTools } from "@/lib/repository";
@@ -69,6 +70,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
         />
 
         <div>
+          <ActiveFilters />
+
           <p className="mb-5 text-sm text-[color:var(--text-muted)]">
             Showing <span className="font-medium text-[color:var(--text)]">{tools.length}</span> results
           </p>
