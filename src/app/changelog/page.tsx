@@ -40,7 +40,7 @@ export default function ChangelogPage() {
         style={{ "--fade-delay": "0.02s" } as CSSProperties}
       >
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
-          What's new
+          What&apos;s new
         </p>
         <h1 className="mt-4 text-[48px] font-semibold leading-[1.03] tracking-[-0.02em] text-[color:var(--text)] md:text-[56px]">
           Changelog
