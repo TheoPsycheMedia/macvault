@@ -8,6 +8,7 @@ import { ScoreBadge } from "@/components/ScoreBadge";
 import { SearchBar } from "@/components/SearchBar";
 import { ToolCard } from "@/components/ToolCard";
 import {
+  getPublishedToolCount,
   listCategories,
   listFeaturedTools,
   listRecentTools,
@@ -18,11 +19,12 @@ import { formatCompactNumber, formatDate } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [featuredTools, trendingTools, categoryList, recentlyAdded] = await Promise.all([
+  const [featuredTools, trendingTools, categoryList, recentlyAdded, toolCount] = await Promise.all([
     listFeaturedTools(4),
     listTrendingTools(6),
     listCategories(),
     listRecentTools(4),
+    getPublishedToolCount(),
   ]);
 
   return (
@@ -43,7 +45,7 @@ export default async function Home() {
         </p>
         <div className="mt-6 flex flex-wrap gap-2.5">
           <span className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-1.5 text-sm text-[color:var(--text-muted)]">
-            17 curated tools
+            {toolCount} curated tools
           </span>
           <span className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-1.5 text-sm text-[color:var(--text-muted)]">
             Transparent scoring

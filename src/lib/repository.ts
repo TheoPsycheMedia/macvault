@@ -281,11 +281,29 @@ export async function listSimilarTools(tool: Tool, limit = 3): Promise<Tool[]> {
   return result.rows.map((row) => mapTool(row as DbRow));
 }
 
+export async function getPublishedToolCount(): Promise<number> {
+  const result = await execute(
+    "SELECT COUNT(*) as c FROM tools WHERE isPublished = 1",
+  );
+
+  return toNumber(result.rows[0]?.c);
+}
+
 export async function listCategories(): Promise<Category[]> {
   const result = await execute(`
-    SELECT id, name, slug, icon, description, toolCount
-    FROM categories
-    ORDER BY toolCount DESC, name ASC
+    SELECT
+      c.id,
+      c.name,
+      c.slug,
+      c.icon,
+      c.description,
+      (
+        SELECT COUNT(*)
+        FROM tools t
+        WHERE t.category = c.slug AND t.isPublished = 1
+      ) as toolCount
+    FROM categories c
+    ORDER BY toolCount DESC, c.name ASC
   `);
 
   return result.rows.map((row) => mapCategory(row as DbRow));
@@ -294,9 +312,19 @@ export async function listCategories(): Promise<Category[]> {
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
   const result = await execute(
     `
-      SELECT id, name, slug, icon, description, toolCount
-      FROM categories
-      WHERE slug = ?
+      SELECT
+        c.id,
+        c.name,
+        c.slug,
+        c.icon,
+        c.description,
+        (
+          SELECT COUNT(*)
+          FROM tools t
+          WHERE t.category = c.slug AND t.isPublished = 1
+        ) as toolCount
+      FROM categories c
+      WHERE c.slug = ?
       LIMIT 1
     `,
     [slug],
