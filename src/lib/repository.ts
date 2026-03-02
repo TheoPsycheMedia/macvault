@@ -172,7 +172,11 @@ export async function listTools(filters: ToolFilters = {}): Promise<Tool[]> {
     params.push(filters.category);
   }
 
-  if (typeof filters.minScore === "number" && !Number.isNaN(filters.minScore)) {
+  if (
+    typeof filters.minScore === "number" &&
+    !Number.isNaN(filters.minScore) &&
+    filters.minScore > 0
+  ) {
     whereClauses.push("s.overallScore >= ?");
     params.push(filters.minScore);
   }
