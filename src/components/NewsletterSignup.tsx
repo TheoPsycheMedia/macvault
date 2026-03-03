@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 interface NewsletterSignupProps {
@@ -9,19 +8,18 @@ interface NewsletterSignupProps {
 }
 
 export function NewsletterSignup({
-  title = "Get the weekly MacVault digest",
-  description = "A concise editorial roundup of standout releases, useful updates, and practical setup notes.",
+  title = "Stay in the loop",
+  description = "New Mac tools, curated weekly. No spam, ever.",
 }: NewsletterSignupProps) {
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    setIsSubmitting(true);
-    setMessage("");
+    setStatus("loading");
+    setMessage(null);
 
     try {
       const response = await fetch("/api/newsletter/subscribe", {
@@ -38,55 +36,45 @@ export function NewsletterSignup({
         throw new Error(payload.message ?? "Subscription failed");
       }
 
-      setSuccess(true);
+      setStatus("success");
       setMessage(payload.message ?? "Subscribed.");
       setEmail("");
     } catch (error) {
-      setSuccess(false);
-      setMessage(
-        error instanceof Error ? error.message : "Could not subscribe at this time.",
-      );
-    } finally {
-      setIsSubmitting(false);
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Could not subscribe at this time.");
     }
   };
 
   return (
-    <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--bg-soft)] px-6 py-12 text-center sm:px-10">
-      <div className="mx-auto max-w-2xl">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
-          Newsletter
-        </p>
-        <h2 className="mt-3 text-[32px] font-medium leading-tight tracking-[-0.02em] text-[color:var(--text)]">
+    <section className="rounded-[28px] border border-zinc-800 bg-zinc-900 px-6 py-10 md:px-8">
+      <div className="mx-auto max-w-3xl">
+        <h2 className="text-[30px] font-medium leading-tight tracking-[-0.02em] text-zinc-100">
           {title}
         </h2>
-        <p className="mt-3 text-[15px] text-[color:var(--text-muted)]">{description}</p>
+        <p className="mt-2 text-[15px] text-zinc-400">{description}</p>
+
+        <form onSubmit={onSubmit} className="mt-6 flex w-full flex-col gap-3 md:flex-row">
+          <input
+            type="email"
+            required
+            value={email}
+            disabled={status === "loading"}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@company.com"
+            className="h-12 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none ring-0 transition focus:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-70"
+          />
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="inline-flex h-12 items-center justify-center rounded-xl bg-zinc-100 px-6 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {status === "loading" ? "Subscribing..." : "Subscribe"}
+          </button>
+        </form>
+
+        {status === "success" && message ? <p className="mt-4 text-sm text-emerald-400">{message}</p> : null}
+        {status === "error" && message ? <p className="mt-4 text-sm text-rose-400">{message}</p> : null}
       </div>
-
-      <form onSubmit={onSubmit} className="mx-auto mt-7 flex w-full max-w-xl flex-col gap-3 sm:flex-row">
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@company.com"
-          className="h-12 flex-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-5 text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-muted)] outline-none transition duration-300 focus:border-[color:var(--accent)] focus:ring-2 focus:ring-[color:var(--accent-soft)]"
-        />
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[color:var(--accent)] px-6 text-sm font-medium text-[color:var(--accent-contrast)] transition duration-300 hover:opacity-90 disabled:opacity-75"
-        >
-          {isSubmitting ? "Joining..." : "Join Digest"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </form>
-
-      {message ? (
-        <p className={`mt-4 text-sm ${success ? "text-[color:var(--accent)]" : "text-[#9b4f2b]"}`}>
-          {message}
-        </p>
-      ) : null}
     </section>
   );
 }
