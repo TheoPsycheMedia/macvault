@@ -20,6 +20,16 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Newsletter Setup (Resend)
+
+Set these environment variables before using newsletter signup:
+
+- `RESEND_API_KEY` (required to send signup notification emails)
+- `RESEND_FROM_EMAIL` (optional, defaults to `MacVault <onboarding@resend.dev>`)
+- `RESEND_NOTIFY_EMAIL` (optional, defaults to `macvaultapp@proton.me`)
+
+If Resend cannot be called in the current environment, subscriber capture still succeeds and a fallback record is saved in `newsletter_email_fallbacks` for later replay.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

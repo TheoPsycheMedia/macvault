@@ -1,6 +1,10 @@
 import "server-only";
 
 import { execute } from "@/lib/db";
+import {
+  getNewsletterEmailValidationMessage,
+  normalizeNewsletterEmail,
+} from "@/lib/newsletter";
 import type { Category, Tool, ToolFilters, VoteType } from "@/lib/types";
 
 type DbRow = Record<string, unknown>;
@@ -423,15 +427,11 @@ export async function subscribeToNewsletter(email: string): Promise<{
   created: boolean;
   reason: string | null;
 }> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeNewsletterEmail(email);
+  const validationMessage = getNewsletterEmailValidationMessage(normalizedEmail);
 
-  if (!normalizedEmail) {
-    return { created: false, reason: "Email is required" };
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(normalizedEmail)) {
-    return { created: false, reason: "Invalid email format" };
+  if (validationMessage) {
+    return { created: false, reason: validationMessage };
   }
 
   const result = await execute(
@@ -448,4 +448,30 @@ export async function subscribeToNewsletter(email: string): Promise<{
     created,
     reason: created ? null : "Email is already subscribed",
   };
+}
+
+export type NewsletterEmailFallbackReason = "missing_api_key" | "resend_error";
+
+export async function queueNewsletterEmailFallback(
+  email: string,
+  reason: NewsletterEmailFallbackReason,
+  detail?: string,
+) {
+  const normalizedEmail = normalizeNewsletterEmail(email);
+  if (!normalizedEmail) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  // TODO: Process this queue with a cron/retry worker once background jobs are available.
+  await execute(
+    `
+      INSERT INTO newsletter_email_fallbacks (email, reason, detail, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(email, reason) DO UPDATE
+      SET detail = excluded.detail, updatedAt = excluded.updatedAt
+    `,
+    [normalizedEmail, reason, detail ?? null, now, now],
+  );
 }

@@ -36,6 +36,18 @@ export async function POST(request: Request) {
   }
 
   const results = await sendNewsletter(subscribers, body.subject, body.html);
+
+  if ("error" in results) {
+    return NextResponse.json(
+      {
+        message: results.error,
+        ...results,
+        total: subscribers.length,
+      },
+      { status: 503 },
+    );
+  }
+
   return NextResponse.json({
     message: "Newsletter sent",
     ...results,

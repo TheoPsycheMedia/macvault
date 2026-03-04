@@ -145,6 +145,17 @@ async function createTables() {
       )
     `,
     `
+      CREATE TABLE IF NOT EXISTS newsletter_email_fallbacks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        detail TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        UNIQUE(email, reason)
+      )
+    `,
+    `
       CREATE TABLE IF NOT EXISTS admin_users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT NOT NULL UNIQUE,
@@ -195,6 +206,7 @@ async function createTables() {
     "CREATE INDEX IF NOT EXISTS idx_scores_toolId ON scores(toolId)",
     "CREATE INDEX IF NOT EXISTS idx_votes_toolId ON votes(toolId)",
     "CREATE INDEX IF NOT EXISTS idx_votes_visitorId ON votes(visitorId)",
+    "CREATE INDEX IF NOT EXISTS idx_newsletter_fallbacks_email ON newsletter_email_fallbacks(email)",
     "CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email)",
     "CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token)",
     "CREATE INDEX IF NOT EXISTS idx_admin_sessions_expiresAt ON admin_sessions(expiresAt)",
