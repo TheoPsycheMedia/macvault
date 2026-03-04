@@ -152,9 +152,11 @@ export function FilterSidebar({
           <input
             id="search"
             name="search"
+            type="search"
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
             placeholder="Tool, feature, or keyword"
+            data-primary-search="true"
             className="h-11 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-4 text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-muted)] outline-none transition duration-300 focus:border-[color:var(--accent)] focus:ring-2 focus:ring-[color:var(--accent-soft)]"
           />
         </div>

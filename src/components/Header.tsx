@@ -78,7 +78,7 @@ export function Header() {
                 </Link>
               ))}
             </nav>
-            <SearchBar size="sm" />
+            <SearchBar size="sm" primaryShortcutTarget={false} />
           </div>
         </div>
       ) : null}
